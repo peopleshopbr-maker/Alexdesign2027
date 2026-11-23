@@ -1,0 +1,8 @@
+{
+  "name": "Remix Vértice Studio",
+  "description": "Laboratório interativo de renderização gráfica 3D com TypeScript, React, WebGPU e WebGL2 direto no navegador.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
