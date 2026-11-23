@@ -4,7 +4,6 @@
 
 $ErrorActionPreference = "Stop"
 $PastaProjeto = "C:\Users\studio alex\OneDrive\Documentos\Alexdesign\alexdesign2027"
-$RepoUrl = "https://github.com" + "peopleshopbr-maker/Alexdesign2027.git"
 
 Set-Location $PastaProjeto
 
@@ -15,7 +14,6 @@ Write-Host "2/4 - Gerando build de producao (dist)..." -ForegroundColor Cyan
 npm run build
 
 Write-Host "3/4 - Preparando arquivos para o GitHub..." -ForegroundColor Cyan
-git remote set-url origin $RepoUrl
 git branch -M main
 git add .
 
