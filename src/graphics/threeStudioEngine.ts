@@ -2801,6 +2801,10 @@ export class ThreeStudioEngine {
     }
   }
 
+  public hasLoadedGltfModel(): boolean {
+    return Boolean(this.loadedGltfRoot);
+  }
+
   public async loadGltfFile(
     file: File,
     targetPipeline: 'gltf' | 'sculpt' = 'gltf',

@@ -70,9 +70,16 @@ export function TopBar({
     <header className="h-13 sm:h-14 w-full shrink-0 bg-[#0b0e14] border-b border-white/10 px-2.5 sm:px-5 flex items-center justify-between gap-2 sm:gap-4 z-30">
       {/* Zona 1: Marca + Menu Arquivo padrão 3D */}
       <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink-0">
-        <h1 className="font-display text-sm sm:text-lg font-bold tracking-tight text-white whitespace-nowrap shrink-0">
-          Vértice <span className="hidden xs:inline sm:inline">Studio</span>
-        </h1>
+        <div className="flex items-center gap-2">
+          <img
+            src="/logo.png"
+            alt="Logo"
+            className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0 drop-shadow-[0_0_8px_rgba(56,189,248,0.35)]"
+          />
+          <h1 className="font-display text-sm sm:text-lg font-bold tracking-tight text-white whitespace-nowrap shrink-0">
+            Alex Design <span className="hidden xs:inline sm:inline text-slate-400 font-medium text-xs sm:text-sm">Studio</span>
+          </h1>
+        </div>
 
         <div ref={menuRef} className="relative">
           <button

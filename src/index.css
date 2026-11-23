@@ -92,6 +92,13 @@ input[type="range"].studio-slider::-webkit-slider-thumb:hover {
   transform: scale(1.15);
 }
 
+input[type="range"].studio-slider::-moz-range-track {
+  height: 5px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.14);
+  border: none;
+}
+
 input[type="range"].studio-slider::-moz-range-thumb {
   width: 15px;
   height: 15px;

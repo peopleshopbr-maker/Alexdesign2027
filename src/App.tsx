@@ -70,27 +70,27 @@ const DEFAULT_WEIGHT_PAINT: WeightPaintSettings = {
 
 const DEFAULT_ANIMATION: AnimationSettings = {
   enabled: true,
-  playing: true,
+  playing: false,
   cycleMode: 'full_cycle',
   action: 'walk',
   composeEnabled: false,
   upperBodyAction: 'none',
-  inPlace: false,
+  inPlace: true,
   propType: 'none',
   exportProfile: 'standard',
   appeal: 'neutral',
-  squashStretch: 35,
-  anticipation: 30,
+  squashStretch: 0,
+  anticipation: 0,
   staging: 'default',
   method: 'straight_ahead',
-  followThrough: 35,
+  followThrough: 10,
   exaggeration: 1.0,
   easing: 'slow_in_out',
-  arcs: 40,
+  arcs: 20,
   motionTrail: true,
-  secondaryAction: 'breathing',
+  secondaryAction: 'none',
   timing: 1.0,
-  solidDrawing: 25,
+  solidDrawing: 10,
   fpsCadence: 30,
   currentFrame: 1,
   frameStart: 1,
@@ -193,12 +193,79 @@ const INITIAL_METRICS: RenderMetrics = {
   },
 };
 
+function deepMergeSettings(
+  base: RenderSettings,
+  override?: Partial<RenderSettings>
+): RenderSettings {
+  if (!override) return structuredClone(base);
+  return {
+    ...base,
+    ...override,
+    lighting: {
+      ...base.lighting,
+      ...(override.lighting ?? {}),
+    },
+    postProcessing: {
+      ...base.postProcessing,
+      ...(override.postProcessing ?? {}),
+    },
+    viewportShading: {
+      ...base.viewportShading,
+      ...(override.viewportShading ?? {}),
+    },
+    sculpt: {
+      ...base.sculpt,
+      ...(override.sculpt ?? {}),
+    },
+    geometryNodes: {
+      ...base.geometryNodes,
+      ...(override.geometryNodes ?? {}),
+    },
+    animation: {
+      ...base.animation,
+      ...(override.animation ?? {}),
+      ikTargets: {
+        ...base.animation.ikTargets,
+        ...(override.animation?.ikTargets ?? {}),
+        leftHand: {
+          ...base.animation.ikTargets.leftHand,
+          ...(override.animation?.ikTargets?.leftHand ?? {}),
+        },
+        rightHand: {
+          ...base.animation.ikTargets.rightHand,
+          ...(override.animation?.ikTargets?.rightHand ?? {}),
+        },
+        leftFoot: {
+          ...base.animation.ikTargets.leftFoot,
+          ...(override.animation?.ikTargets?.leftFoot ?? {}),
+        },
+        rightFoot: {
+          ...base.animation.ikTargets.rightFoot,
+          ...(override.animation?.ikTargets?.rightFoot ?? {}),
+        },
+      },
+      keyframes: override.animation?.keyframes
+        ? [...override.animation.keyframes]
+        : [...base.animation.keyframes],
+      nlaStrips: override.animation?.nlaStrips
+        ? [...override.animation.nlaStrips]
+        : [...base.animation.nlaStrips],
+      poseOverrides: {
+        ...(override.animation?.poseOverrides ?? {}),
+      },
+    },
+  };
+}
+
 export default function App() {
   const viewportRef = useRef<HTMLDivElement>(null);
   const threeEngineRef = useRef<ThreeStudioEngine | null>(null);
   const webgpuEngineRef = useRef<NativeWebGPUParticleEngine | null>(null);
 
   const [settings, setSettings] = useState<RenderSettings>(DEFAULT_SETTINGS);
+  const settingsRef = useRef<RenderSettings>(settings);
+  settingsRef.current = settings;
+
   const [metrics, setMetrics] = useState<RenderMetrics>(INITIAL_METRICS);
   const metricsRef = useRef<RenderMetrics>(INITIAL_METRICS);
   metricsRef.current = metrics;
@@ -213,14 +280,23 @@ export default function App() {
 
   const [contextLost, setContextLost] = useState(false);
   const [autoOrbit, setAutoOrbit] = useState(true);
+  const autoOrbitRef = useRef(autoOrbit);
+  autoOrbitRef.current = autoOrbit;
+
   const [dockCollapsed, setDockCollapsed] = useState(false);
   const [timelineCollapsed, setTimelineCollapsed] = useState(false);
   const timelineRetargetInputRef = useRef<HTMLInputElement>(null);
   const [leftPanelOpen, setLeftPanelOpen] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth >= 768 : true
   );
+  const leftPanelOpenRef = useRef(leftPanelOpen);
+  leftPanelOpenRef.current = leftPanelOpen;
+
   const [sideUtilityPanel, setSideUtilityPanel] = useState<'none' | 'postfx' | 'lighting'>('none');
   const [rightPanelMode, setRightPanelMode] = useState<'closed' | 'inspector' | 'outliner'>('closed');
+  const rightPanelModeRef = useRef(rightPanelMode);
+  rightPanelModeRef.current = rightPanelMode;
+
   const [outlinerItems, setOutlinerItems] = useState<SceneOutlinerItem[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [selectedObject, setSelectedObject] = useState<SelectedObjectInfo | null>(null);
@@ -236,21 +312,50 @@ export default function App() {
   const [redoCount, setRedoCount] = useState(0);
   const [jointMarkersActive, setJointMarkersActive] = useState(false);
   const [jointMarkerSymmetry, setJointMarkerSymmetry] = useState(true);
+  const jointMarkerSymmetryRef = useRef(jointMarkerSymmetry);
+  jointMarkerSymmetryRef.current = jointMarkerSymmetry;
+
   const [liveRenderActive, setLiveRenderActive] = useState(false);
+  const liveRenderActiveRef = useRef(liveRenderActive);
+  liveRenderActiveRef.current = liveRenderActive;
+
   const [transparentPng, setTransparentPng] = useState(true);
   const [captureResolution, setCaptureResolution] = useState<ExportCaptureResolution>('viewport');
   const [turntable360, setTurntable360] = useState(false);
   const [multiClipExport, setMultiClipExport] = useState(false);
   const [compareMode, setCompareMode] = useState<ViewportCompareMode>('off');
+  const compareModeRef = useRef(compareMode);
+  compareModeRef.current = compareMode;
+
   const [exportingFramesLabel, setExportingFramesLabel] = useState<string | null>(null);
   const [exportingSpriteSheetLabel, setExportingSpriteSheetLabel] = useState<string | null>(null);
   const [exportingBlenderZip, setExportingBlenderZip] = useState(false);
   const [exportingGlb, setExportingGlb] = useState(false);
   const [rigBoneNames, setRigBoneNames] = useState<string[]>([]);
+  const [rigRevision, setRigRevision] = useState(0);
   const [weightPaint, setWeightPaint] = useState<WeightPaintSettings>(DEFAULT_WEIGHT_PAINT);
-  const [savedPoses, setSavedPoses] = useState<SavedPosePreset[]>([]);
+  const weightPaintRef = useRef(weightPaint);
+  weightPaintRef.current = weightPaint;
+
+  const [savedPoses, setSavedPoses] = useState<SavedPosePreset[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = localStorage.getItem('vertice_studio_saved_poses_v1');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {
+      // Ignore parse error
+    }
+    return [];
+  });
+  const savedPosesRef = useRef(savedPoses);
+  savedPosesRef.current = savedPoses;
+
   const liveRenderPrevRef = useRef<{
     postFxEnabled: boolean;
+    bloomStrength: number;
     bakeAo: boolean;
     showBones: boolean;
   } | null>(null);
@@ -269,6 +374,22 @@ export default function App() {
   const [startupModelName, setStartupModelName] = useState<string | null>(null);
   const lastUploadedFileRef = useRef<File | null>(null);
   const noticeTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (noticeTimerRef.current) {
+        window.clearTimeout(noticeTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('vertice_studio_saved_poses_v1', JSON.stringify(savedPoses));
+    } catch {
+      // Ignore storage error
+    }
+  }, [savedPoses]);
 
   const showNotice = useCallback((msg: string) => {
     setNotice(msg);
@@ -335,19 +456,23 @@ export default function App() {
     (downloadFile = true) => {
       const json = threeEngineRef.current?.exportProjectJson();
       if (!json) return;
+      let finalJson = json;
       try {
-        localStorage.setItem('vertice_studio_project_v1', json);
+        const parsed = JSON.parse(json);
+        parsed.savedPoses = savedPosesRef.current;
+        finalJson = JSON.stringify(parsed, null, 2);
+        localStorage.setItem('vertice_studio_project_v1', finalJson);
       } catch {
         // Ignore storage quota errors cleanly
       }
       if (downloadFile) {
-        const blob = new Blob([json], { type: 'application/json' });
+        const blob = new Blob([finalJson], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = 'vertice-studio-projeto.vertice.json';
         a.click();
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
         showNotice('Projeto salvo (.vertice.json) e armazenado no navegador.');
       } else {
         showNotice('Projeto salvo localmente no navegador (Ctrl+S).');
@@ -363,21 +488,22 @@ export default function App() {
         const text = await file.text();
         const res = threeEngineRef.current.importProjectJson(text);
         if (res.ok && res.settings) {
-          const normalizedSettings: RenderSettings = {
-            ...res.settings,
-            sceneMode: res.settings.sceneMode === 'sculpt' ? 'gltf' : res.settings.sceneMode,
-            animation: {
-              ...DEFAULT_ANIMATION,
-              ...res.settings.animation,
-              ikTargets: {
-                ...DEFAULT_ANIMATION.ikTargets,
-                ...(res.settings.animation?.ikTargets ?? {}),
-              },
-              poseOverrides: res.settings.animation?.poseOverrides ?? {},
-            },
-          };
+          const rawParsed = JSON.parse(text) as { savedPoses?: SavedPosePreset[] };
+          const normalizedSettings = deepMergeSettings(DEFAULT_SETTINGS, res.settings);
+          if (normalizedSettings.sceneMode === 'sculpt') {
+            normalizedSettings.sceneMode = 'gltf';
+          }
           setSettings(normalizedSettings);
           setJointMarkersActive(false);
+          setWeightPaint(DEFAULT_WEIGHT_PAINT);
+          threeEngineRef.current.setWeightPaintSettings(DEFAULT_WEIGHT_PAINT);
+          setStartupModelName(null);
+          if (Array.isArray(rawParsed.savedPoses)) {
+            setSavedPoses(rawParsed.savedPoses);
+          } else {
+            setSavedPoses([]);
+          }
+          setRigRevision((r) => r + 1);
         }
         showNotice(res.message);
       } catch {
@@ -410,7 +536,7 @@ export default function App() {
         a.href = url;
         a.download = 'vertice-studio-turntable.webm';
         a.click();
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
         showNotice('Vídeo Turntable 360° (.webm) baixado.');
       }
     });
@@ -424,14 +550,21 @@ export default function App() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      if (
-        target &&
-        (target.tagName === 'INPUT' ||
+      if (target) {
+        if (
           target.tagName === 'TEXTAREA' ||
           target.tagName === 'SELECT' ||
-          target.isContentEditable)
-      ) {
-        return;
+          target.isContentEditable
+        ) {
+          return;
+        }
+        if (target.tagName === 'INPUT') {
+          const inputType = (target as HTMLInputElement).type.toLowerCase();
+          const nonTextTypes = ['range', 'checkbox', 'radio', 'button', 'submit', 'reset'];
+          if (!nonTextTypes.includes(inputType)) {
+            return;
+          }
+        }
       }
 
       const mod = e.ctrlKey || e.metaKey;
@@ -474,17 +607,96 @@ export default function App() {
         setRightPanelMode('closed');
         return;
       }
-      if (e.code === 'Space') {
+
+      // Alt+A: reproduzir ou parar animação (padrão 3D)
+      if (e.altKey && key === 'a') {
         e.preventDefault();
-        setPieMenuPos(lastPointerPosRef.current);
-        setPieMenuOpen((prev) => !prev);
+        setSettings((prev) => {
+          const nextPlaying = !prev.animation.playing;
+          showNotice(nextPlaying ? 'Reproduzindo animação (Alt+A)' : 'Animação pausada (Alt+A)');
+          return {
+            ...prev,
+            animation: { ...prev.animation, playing: nextPlaying },
+          };
+        });
         return;
       }
+
+      // Barra de espaço: reproduzir ou pausar animação (padrão 3D)
+      if (e.code === 'Space') {
+        if (e.repeat) return;
+        if (target && target.tagName === 'BUTTON') return;
+        e.preventDefault();
+        setSettings((prev) => {
+          const nextPlaying = !prev.animation.playing;
+          showNotice(nextPlaying ? 'Reproduzindo animação (Espaço)' : 'Animação pausada (Espaço)');
+          return {
+            ...prev,
+            animation: { ...prev.animation, playing: nextPlaying },
+          };
+        });
+        return;
+      }
+
+      // Setas Esquerda / Direita: avançar ou retroceder quadros na timeline
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const delta = e.shiftKey ? -5 : -1;
+        setSettings((prev) => {
+          const start = prev.animation.frameStart ?? 1;
+          const end = prev.animation.frameEnd ?? 60;
+          const nextF = Math.max(start, Math.min(end, prev.animation.currentFrame + delta));
+          return {
+            ...prev,
+            animation: { ...prev.animation, currentFrame: nextF },
+          };
+        });
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        const delta = e.shiftKey ? 5 : 1;
+        setSettings((prev) => {
+          const start = prev.animation.frameStart ?? 1;
+          const end = prev.animation.frameEnd ?? 60;
+          const nextF = Math.max(start, Math.min(end, prev.animation.currentFrame + delta));
+          return {
+            ...prev,
+            animation: { ...prev.animation, currentFrame: nextF },
+          };
+        });
+        return;
+      }
+
+      // I ou K: inserir keyframe no quadro atual
+      if (key === 'i' || key === 'k') {
+        setSettings((prev) => {
+          const cf = prev.animation.currentFrame;
+          const existing = prev.animation.keyframes || [];
+          if (!existing.includes(cf)) {
+            const nextKf = [...existing, cf].sort((a, b) => a - b);
+            showNotice(`Keyframe inserido no quadro ${cf}f (Tecla ${key.toUpperCase()}).`);
+            return {
+              ...prev,
+              animation: { ...prev.animation, keyframes: nextKf },
+            };
+          } else {
+            showNotice(`Quadro ${cf}f já possui keyframe.`);
+            return prev;
+          }
+        });
+        return;
+      }
+
+      // Atalhos de tecla única não disparam com Ctrl, Cmd ou Alt
+      if (mod || e.altKey) return;
+
       if (key === 'g') {
         setSettings((prev) => ({
           ...prev,
           sculpt: { ...prev.sculpt, gizmoMode: 'translate', brush: 'camera' },
         }));
+        showNotice('Modo Mover (G)');
         return;
       }
       if (key === 'r') {
@@ -492,13 +704,15 @@ export default function App() {
           ...prev,
           sculpt: { ...prev.sculpt, gizmoMode: 'rotate', brush: 'camera' },
         }));
+        showNotice('Modo Rotacionar (R)');
         return;
       }
-      if (key === 's' && !mod) {
+      if (key === 's') {
         setSettings((prev) => ({
           ...prev,
           sculpt: { ...prev.sculpt, gizmoMode: 'scale', brush: 'camera' },
         }));
+        showNotice('Modo Escalar (S)');
         return;
       }
       if (key === 'q') {
@@ -570,6 +784,14 @@ export default function App() {
         webgpuEngineRef.current.destroy();
         webgpuEngineRef.current = null;
       }
+      setUndoCount(0);
+      setRedoCount(0);
+      setSelectedObject(null);
+      setOutlinerItems([]);
+      setRigBoneNames([]);
+      setRightPanelMode((prev) => (prev === 'inspector' ? 'closed' : prev));
+      setJointMarkersActive(false);
+      setLiveRenderActive(false);
     };
 
     cleanupEngines();
@@ -578,7 +800,7 @@ export default function App() {
       if (cancelled) return;
       const engine = new ThreeStudioEngine(
         container,
-        settings,
+        settingsRef.current,
         (nextMetrics) => setMetrics(nextMetrics),
         (lost) => setContextLost(lost),
         (sel) => {
@@ -618,39 +840,63 @@ export default function App() {
           setCameraQuaternion(quat);
         }
       );
-      engine.setAutoOrbit(autoOrbit);
+      engine.setAutoOrbit(autoOrbitRef.current);
       engine.setAutoQuality(true);
       threeEngineRef.current = engine;
 
       void loadStartupModelFile().then(async (saved) => {
-        if (cancelled || !saved || threeEngineRef.current !== engine) return;
+        if (cancelled || threeEngineRef.current !== engine) return;
+        if (saved) {
+          try {
+            const info = await engine.loadGltfFile(saved.file, 'gltf', {
+              autoRigIfStatic: saved.autoRigOnImport,
+              rigType: 'biped',
+            });
+            if (cancelled) return;
+            lastUploadedFileRef.current = saved.file;
+            setStartupModelName(saved.file.name);
+            setSettings((prev) => ({
+              ...prev,
+              sceneMode: info.clipCount > 0 || info.boneCount > 0 ? 'animation' : 'gltf',
+              animation: {
+                ...prev.animation,
+                activeClipIndex: 0,
+                poseSource: info.clipCount > 0 && !info.autoRigged ? 'clip' : 'procedural',
+                showBones: info.autoRigged ? true : prev.animation.showBones,
+              },
+            }));
+            setRigRevision((r) => r + 1);
+            showNotice(`Modelo inicial carregado: ${info.name}`);
+            return;
+          } catch {
+            // Ignore corrupted cached startup model cleanly
+          }
+        }
+
         try {
-          const info = await engine.loadGltfFile(saved.file, 'gltf', {
-            autoRigIfStatic: saved.autoRigOnImport,
-            rigType: 'biped',
-          });
-          if (cancelled) return;
-          lastUploadedFileRef.current = saved.file;
-          setStartupModelName(saved.file.name);
-          setSettings((prev) => ({
-            ...prev,
-            sceneMode: info.clipCount > 0 || info.boneCount > 0 ? 'animation' : 'gltf',
-            animation: {
-              ...prev.animation,
-              activeClipIndex: 0,
-              poseSource: info.clipCount > 0 && !info.autoRigged ? 'clip' : 'procedural',
-              showBones: info.autoRigged ? true : prev.animation.showBones,
-            },
-          }));
-          showNotice(`Modelo inicial carregado: ${info.name}`);
+          const savedProject = localStorage.getItem('vertice_studio_project_v1');
+          if (savedProject && !cancelled && threeEngineRef.current === engine) {
+            const res = engine.importProjectJson(savedProject);
+            if (res.ok && res.settings) {
+              const parsed = JSON.parse(savedProject) as { savedPoses?: SavedPosePreset[] };
+              const normalized = deepMergeSettings(DEFAULT_SETTINGS, res.settings);
+              if (normalized.sceneMode === 'sculpt') normalized.sceneMode = 'gltf';
+              setSettings(normalized);
+              if (Array.isArray(parsed.savedPoses)) {
+                setSavedPoses(parsed.savedPoses);
+              }
+              setRigRevision((r) => r + 1);
+              showNotice('Projeto restaurado do armazenamento local.');
+            }
+          }
         } catch {
-          // Ignore corrupted cached startup model cleanly
+          // Ignore parse errors cleanly
         }
       });
     };
 
     if (useNativeWebGPU) {
-      const gpuEngine = new NativeWebGPUParticleEngine(container, settings, (nextMetrics) =>
+      const gpuEngine = new NativeWebGPUParticleEngine(container, settingsRef.current, (nextMetrics) =>
         setMetrics(nextMetrics)
       );
       webgpuEngineRef.current = gpuEngine;
@@ -695,7 +941,7 @@ export default function App() {
           ? prev.selectedBoneName
           : names[0] ?? '',
     }));
-  }, [metrics.lodTelemetry.boneCount, metrics.lodTelemetry.loadedModelName]);
+  }, [metrics.lodTelemetry.boneCount, metrics.lodTelemetry.loadedModelName, rigRevision]);
 
   const handleUpdateSettings = useCallback((patch: Partial<RenderSettings>) => {
     setSettings((prev) => ({ ...prev, ...patch }));
@@ -724,10 +970,19 @@ export default function App() {
 
   const handleResetAnimation = useCallback(() => {
     threeEngineRef.current?.resetAnimationTrail();
-    setSettings((prev) => ({
-      ...prev,
-      animation: { ...DEFAULT_ANIMATION },
-    }));
+    setSettings((prev) => {
+      const cloned = structuredClone(DEFAULT_ANIMATION);
+      return {
+        ...prev,
+        animation: {
+          ...cloned,
+          exportProfile: prev.animation.exportProfile,
+          frameStart: prev.animation.frameStart,
+          frameEnd: prev.animation.frameEnd,
+          poseSource: prev.animation.poseSource,
+        },
+      };
+    });
   }, []);
 
   const handleCameraPreset = useCallback((preset: CameraPreset) => {
@@ -736,11 +991,9 @@ export default function App() {
   }, []);
 
   const handleToggleAutoOrbit = useCallback(() => {
-    setAutoOrbit((prev) => {
-      const next = !prev;
-      threeEngineRef.current?.setAutoOrbit(next);
-      return next;
-    });
+    const next = !autoOrbitRef.current;
+    setAutoOrbit(next);
+    threeEngineRef.current?.setAutoOrbit(next);
   }, []);
 
   const handleOpenGlslInVfx = useCallback(() => {
@@ -810,61 +1063,57 @@ export default function App() {
   }, [showNotice]);
 
   const handleToggleLiveRender = useCallback(() => {
-    setLiveRenderActive((prev) => {
-      const next = !prev;
-      if (next) {
-        liveRenderPrevRef.current = {
-          postFxEnabled: settings.postProcessing.enabled,
-          bakeAo: settings.viewportShading.bakeAo,
-          showBones: settings.animation.showBones,
-        };
-        threeEngineRef.current?.clearSelection();
+    const next = !liveRenderActiveRef.current;
+    setLiveRenderActive(next);
+
+    if (next) {
+      liveRenderPrevRef.current = {
+        postFxEnabled: settingsRef.current.postProcessing.enabled,
+        bloomStrength: settingsRef.current.postProcessing.bloomStrength,
+        bakeAo: settingsRef.current.viewportShading.bakeAo,
+        showBones: settingsRef.current.animation.showBones,
+      };
+      threeEngineRef.current?.clearSelection();
+      setSettings((s) => ({
+        ...s,
+        postProcessing: {
+          ...s.postProcessing,
+          enabled: true,
+          bloomStrength: Math.min(0.26, Math.max(0.18, s.postProcessing.bloomStrength)),
+        },
+        viewportShading: {
+          ...s.viewportShading,
+          bakeAo: true,
+        },
+        animation: {
+          ...s.animation,
+          showBones: false,
+        },
+      }));
+      showNotice('Render ao Vivo ativado: iluminação, sombras e Bloom em tempo real.');
+    } else {
+      const saved = liveRenderPrevRef.current;
+      if (saved) {
         setSettings((s) => ({
           ...s,
           postProcessing: {
             ...s.postProcessing,
-            enabled: true,
-            bloomStrength: Math.min(0.26, Math.max(0.18, s.postProcessing.bloomStrength)),
+            enabled: saved.postFxEnabled,
+            bloomStrength: saved.bloomStrength,
           },
           viewportShading: {
             ...s.viewportShading,
-            bakeAo: true,
+            bakeAo: saved.bakeAo,
           },
           animation: {
             ...s.animation,
-            showBones: false,
+            showBones: saved.showBones,
           },
         }));
-        showNotice('Render ao Vivo ativado: iluminação, sombras e Bloom em tempo real.');
-      } else {
-        const saved = liveRenderPrevRef.current;
-        if (saved) {
-          setSettings((s) => ({
-            ...s,
-            postProcessing: {
-              ...s.postProcessing,
-              enabled: saved.postFxEnabled,
-            },
-            viewportShading: {
-              ...s.viewportShading,
-              bakeAo: saved.bakeAo,
-            },
-            animation: {
-              ...s.animation,
-              showBones: saved.showBones,
-            },
-          }));
-        }
-        showNotice('Render ao Vivo desativado.');
       }
-      return next;
-    });
-  }, [
-    settings.postProcessing.enabled,
-    settings.viewportShading.bakeAo,
-    settings.animation.showBones,
-    showNotice,
-  ]);
+      showNotice('Render ao Vivo desativado.');
+    }
+  }, [showNotice]);
 
   const handleUploadGltf = useCallback(
     async (file: File) => {
@@ -879,12 +1128,14 @@ export default function App() {
           rigType: 'biped',
         });
         lastUploadedFileRef.current = file;
-        void saveStartupModelFile(file, autoRigOnImport)
-          .then(() => setStartupModelName(file.name))
-          .catch(() => {});
         setSettings((prev) => ({
           ...prev,
-          sceneMode: prev.sceneMode === 'shader' ? 'shader' : 'gltf',
+          sceneMode:
+            prev.sceneMode === 'shader'
+              ? 'shader'
+              : info.clipCount > 0 || info.boneCount > 0
+                ? 'animation'
+                : 'gltf',
           animation: {
             ...prev.animation,
             activeClipIndex: 0,
@@ -892,8 +1143,9 @@ export default function App() {
             showBones: info.autoRigged ? true : prev.animation.showBones,
           },
         }));
+        setRigRevision((r) => r + 1);
         showNotice(
-          `${info.name} importado e salvo como modelo inicial (${info.meshes} malha(s), ${info.triangles.toLocaleString('pt-BR')} triângulos${
+          `${info.name} importado (${info.meshes} malha(s), ${info.triangles.toLocaleString('pt-BR')} triângulos${
             info.boneCount > 0 ? `, ${info.boneCount} ossos` : ''
           }).`
         );
@@ -907,14 +1159,14 @@ export default function App() {
   const handlePinStartupModel = useCallback(async () => {
     const engine = threeEngineRef.current;
     const activeName = metricsRef.current.lodTelemetry.loadedModelName;
-    if (!engine || !activeName) {
+    if (!engine || !activeName || !engine.hasLoadedGltfModel()) {
       showNotice('Importe ou insira um modelo antes de fixá-lo como inicial.');
       return;
     }
     try {
       let fileToSave = lastUploadedFileRef.current;
       if (!fileToSave || fileToSave.name !== activeName) {
-        const blob = await engine.exportSampleGlb(settings.animation.exportProfile);
+        const blob = await engine.exportSampleGlb(settingsRef.current.animation.exportProfile);
         fileToSave = new File([blob], activeName, { type: 'model/gltf-binary' });
         lastUploadedFileRef.current = fileToSave;
       }
@@ -924,7 +1176,7 @@ export default function App() {
     } catch {
       showNotice('Não foi possível salvar este modelo como inicial no navegador.');
     }
-  }, [autoRigOnImport, settings.animation.exportProfile, showNotice]);
+  }, [autoRigOnImport, showNotice]);
 
   const handleClearStartupModel = useCallback(async () => {
     await clearStartupModelFile();
@@ -947,10 +1199,11 @@ export default function App() {
           poseSource: 'procedural',
           showBones: true,
           enabled: true,
-          playing: true,
+          playing: false,
           cycleMode: 'full_cycle',
         },
       }));
+      setRigRevision((r) => r + 1);
       showNotice(
         `Auto-Rigging concluído (${res.boneCount} ossos)! Use os comandos em Animação 3D.`
       );
@@ -964,14 +1217,14 @@ export default function App() {
       showNotice('Importe ou insira um modelo 3D antes de posicionar marcadores.');
       return;
     }
-    threeEngineRef.current?.setJointMarkerSymmetry(jointMarkerSymmetry);
+    threeEngineRef.current?.setJointMarkerSymmetry(jointMarkerSymmetryRef.current);
     setJointMarkersActive(true);
     setSettings((prev) => ({
       ...prev,
       sculpt: { ...prev.sculpt, gizmoMode: 'translate' },
     }));
     showNotice('Arraste as esferas (juntas) com o Gizmo 3D e clique em Gerar Skeleton.');
-  }, [jointMarkerSymmetry, showNotice]);
+  }, [showNotice]);
 
   const handleCommitJointMarkers = useCallback(() => {
     const res = threeEngineRef.current?.commitJointMarkerRigging();
@@ -987,10 +1240,11 @@ export default function App() {
         poseSource: 'procedural',
         showBones: true,
         enabled: true,
-        playing: true,
+        playing: false,
         cycleMode: 'full_cycle',
       },
     }));
+    setRigRevision((r) => r + 1);
     showNotice(`Skeleton gerado pelos marcadores (${res.boneCount} ossos)!`);
   }, [showNotice]);
 
@@ -1001,11 +1255,9 @@ export default function App() {
   }, [showNotice]);
 
   const handleToggleJointMarkerSymmetry = useCallback(() => {
-    setJointMarkerSymmetry((prev) => {
-      const next = !prev;
-      threeEngineRef.current?.setJointMarkerSymmetry(next);
-      return next;
-    });
+    const next = !jointMarkerSymmetryRef.current;
+    setJointMarkerSymmetry(next);
+    threeEngineRef.current?.setJointMarkerSymmetry(next);
   }, []);
 
   const handleInsertRiggedHumanoid = useCallback(
@@ -1021,10 +1273,11 @@ export default function App() {
           poseSource: 'procedural',
           showBones: true,
           enabled: true,
-          playing: true,
+          playing: false,
           cycleMode: 'full_cycle',
         },
       }));
+      setRigRevision((r) => r + 1);
       showNotice(
         `${res.name} inserido (${res.boneCount} ossos)! Pronto para todos os comandos.`
       );
@@ -1047,7 +1300,7 @@ export default function App() {
         a.href = url;
         a.download = `vertice-studio-${chosenProfile}-blender53.glb`;
         a.click();
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
         showNotice(
           `Arquivo vertice-studio-${chosenProfile}-blender53.glb exportado${
             multiClipExport ? ' com pacote Multi-Clipes NLA' : ''
@@ -1078,7 +1331,7 @@ export default function App() {
         a.href = url;
         a.download = `vertice-studio-${chosenProfile}-blender53-completo.zip`;
         a.click();
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
         showNotice(
           `ZIP Completo Blender 5.3+ (.glb + .py + .json + PNG transp.) exportado!`
         );
@@ -1095,15 +1348,15 @@ export default function App() {
     (transparentOverride?: boolean) => {
       const useTransparent = transparentOverride ?? transparentPng;
       const dataUrl = useTransparent
-        ? threeEngineRef.current?.captureFrame({
+        ? (threeEngineRef.current?.captureFrame({
             transparentBg: true,
             resolution: captureResolution,
-          })
-        : webgpuEngineRef.current?.captureFrame() ??
+          }) ?? webgpuEngineRef.current?.captureFrame())
+        : (webgpuEngineRef.current?.captureFrame() ??
           threeEngineRef.current?.captureFrame({
             transparentBg: false,
             resolution: captureResolution,
-          });
+          }));
       if (!dataUrl) {
         showNotice('Aguarde o quadro renderizar para capturar.');
         return;
@@ -1130,12 +1383,15 @@ export default function App() {
         return;
       }
       if (exportingFramesLabel) return;
-      const useTransparent = transparentOverride ?? true;
+      const useTransparent = transparentOverride ?? transparentPng;
+      const startFrame = settings.animation.frameStart;
+      const endFrame = settings.animation.frameEnd;
+      const totalEstimated = Math.max(1, Math.floor((endFrame - startFrame) / step) + 1);
       try {
-        setExportingFramesLabel('0/60...');
+        setExportingFramesLabel(`0/${totalEstimated}...`);
         const { blob, frameCount } = await threeEngineRef.current.exportAnimationFramesZip({
-          startFrame: 1,
-          endFrame: 60,
+          startFrame,
+          endFrame,
           step,
           transparentBg: useTransparent,
           resolution: captureResolution,
@@ -1149,7 +1405,7 @@ export default function App() {
           ? 'vertice-studio-quadros-transparente.zip'
           : 'vertice-studio-quadros.zip';
         a.click();
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
         showNotice(
           `${frameCount} quadros PNG (${useTransparent ? 'fundo transparente' : 'com fundo'}${
             turntable360 ? ', giro 360°' : ''
@@ -1161,7 +1417,15 @@ export default function App() {
         setExportingFramesLabel(null);
       }
     },
-    [exportingFramesLabel, captureResolution, turntable360, showNotice]
+    [
+      exportingFramesLabel,
+      transparentPng,
+      settings.animation.frameStart,
+      settings.animation.frameEnd,
+      captureResolution,
+      turntable360,
+      showNotice,
+    ]
   );
 
   const handleExportSpriteSheetZip = useCallback(
@@ -1172,11 +1436,14 @@ export default function App() {
       }
       if (exportingSpriteSheetLabel) return;
       const useTransparent = transparentOverride ?? transparentPng;
+      const startFrame = settings.animation.frameStart;
+      const endFrame = settings.animation.frameEnd;
+      const totalEstimated = Math.max(1, Math.floor((endFrame - startFrame) / step) + 1);
       try {
-        setExportingSpriteSheetLabel('0/60...');
+        setExportingSpriteSheetLabel(`0/${totalEstimated}...`);
         const res = await threeEngineRef.current.exportSpriteSheetZip({
-          startFrame: 1,
-          endFrame: 60,
+          startFrame,
+          endFrame,
           step,
           transparentBg: useTransparent,
           resolution: captureResolution,
@@ -1188,7 +1455,7 @@ export default function App() {
         a.href = url;
         a.download = 'vertice-studio-spritesheet.zip';
         a.click();
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
         showNotice(
           `Sprite Sheet ${res.cols}x${res.rows} (${res.sheetWidth}x${res.sheetHeight}px + JSON) exportado!`
         );
@@ -1198,36 +1465,44 @@ export default function App() {
         setExportingSpriteSheetLabel(null);
       }
     },
-    [exportingSpriteSheetLabel, transparentPng, captureResolution, turntable360, showNotice]
+    [
+      exportingSpriteSheetLabel,
+      transparentPng,
+      settings.animation.frameStart,
+      settings.animation.frameEnd,
+      captureResolution,
+      turntable360,
+      showNotice,
+    ]
   );
 
   const handleCycleCompareMode = useCallback(() => {
-    setCompareMode((prev) => {
-      const next: ViewportCompareMode =
-        prev === 'off' ? 'split_normals' : prev === 'split_normals' ? 'wireframe_overlay' : 'off';
-      threeEngineRef.current?.setViewportCompareMode(next);
-      showNotice(
-        next === 'split_normals'
-          ? 'Comparação 50/50 ativada: PBR à esquerda · Normais à direita.'
-          : next === 'wireframe_overlay'
-            ? 'Sobreposição Wireframe + PBR ativada.'
-            : 'Modo de comparação desativado.'
-      );
-      return next;
-    });
+    const prev = compareModeRef.current;
+    const next: ViewportCompareMode =
+      prev === 'off' ? 'split_normals' : prev === 'split_normals' ? 'wireframe_overlay' : 'off';
+    setCompareMode(next);
+    threeEngineRef.current?.setViewportCompareMode(next);
+    showNotice(
+      next === 'split_normals'
+        ? 'Comparação 50/50 ativada: PBR à esquerda · Normais à direita.'
+        : next === 'wireframe_overlay'
+          ? 'Sobreposição Wireframe + PBR ativada.'
+          : 'Modo de comparação desativado.'
+    );
   }, [showNotice]);
 
   const handleUpdateWeightPaint = useCallback(
     (patch: Partial<WeightPaintSettings>) => {
-      setWeightPaint((prev) => {
-        const next = { ...prev, ...patch };
-        const ok = threeEngineRef.current?.setWeightPaintSettings(next) ?? false;
-        if (patch.active === true && !ok) {
-          showNotice('Carregue ou aplique Auto-Rig em uma malha SkinnedMesh antes de ativar o Heatmap.');
-          return { ...next, active: false };
-        }
-        return next;
-      });
+      const current = weightPaintRef.current;
+      const next = { ...current, ...patch };
+      const ok = threeEngineRef.current?.setWeightPaintSettings(next) ?? false;
+      if (patch.active === true && !ok) {
+        threeEngineRef.current?.setWeightPaintSettings({ ...next, active: false });
+        setWeightPaint({ ...next, active: false });
+        showNotice('Carregue ou aplique Auto-Rig em uma malha SkinnedMesh antes de ativar o Heatmap.');
+        return;
+      }
+      setWeightPaint(next);
     },
     [showNotice]
   );
@@ -1354,9 +1629,7 @@ export default function App() {
         }
       };
 
-      if (mode !== 'nodes' && vfxTab === 'postfx') {
-        setVfxTab(lastVfx3DModeRef.current);
-      } else if (mode === 'nodes' && vfxTab === 'postfx') {
+      if (vfxTab === 'postfx') {
         setVfxTab(lastVfx3DModeRef.current);
       }
 
@@ -1368,11 +1641,9 @@ export default function App() {
         return;
       }
       if (isSameWorkspace && vfxTab !== 'postfx') {
-        setLeftPanelOpen((prev) => {
-          const next = !prev;
-          if (next) closeCompetingCompactPanels();
-          return next;
-        });
+        const next = !leftPanelOpenRef.current;
+        setLeftPanelOpen(next);
+        if (next) closeCompetingCompactPanels();
       } else {
         handleUpdateSettings({ sceneMode: targetMode });
         setLeftPanelOpen(true);
@@ -1440,14 +1711,15 @@ export default function App() {
   );
 
   const handleToggleOutliner = useCallback(() => {
-    setRightPanelMode((prev) => {
-      const next = prev === 'outliner' ? (selectedObject ? 'inspector' : 'closed') : 'outliner';
-      if (next !== 'closed' && isCompactViewport) {
-        setLeftPanelOpen(false);
-        setSideUtilityPanel('none');
-      }
-      return next;
-    });
+    const next =
+      rightPanelModeRef.current === 'outliner'
+        ? (selectedObject ? 'inspector' : 'closed')
+        : 'outliner';
+    setRightPanelMode(next);
+    if (next !== 'closed' && isCompactViewport) {
+      setLeftPanelOpen(false);
+      setSideUtilityPanel('none');
+    }
   }, [selectedObject, isCompactViewport]);
 
   const handleApplyMaterialPreset = useCallback(

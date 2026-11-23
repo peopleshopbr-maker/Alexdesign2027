@@ -597,20 +597,20 @@ function evaluateActionParams(
   if (action === 'walk') {
     const s = Math.sin(angle);
     const c = Math.cos(angle);
-    out.rootLiftY = Math.abs(c) * 0.05 * amp * appealBounce;
-    out.lHipX = -s * 0.52 * amp;
-    out.rHipX = s * 0.52 * amp;
-    out.lKneeX = Math.max(0, c * 0.62 * amp);
-    out.rKneeX = Math.max(0, -c * 0.62 * amp);
-    out.lFootX = -out.lHipX * 0.25 - out.lKneeX * 0.2;
-    out.rFootX = -out.rHipX * 0.25 - out.rKneeX * 0.2;
-    out.lShoX = -Math.sin(angle - followLag) * 0.48 * amp;
-    out.rShoX = Math.sin(angle - followLag) * 0.48 * amp;
-    out.lElbBend = 0.26 + Math.max(0, Math.sin(angle - followLag)) * 0.28;
-    out.rElbBend = 0.26 + Math.max(0, -Math.sin(angle - followLag)) * 0.28;
-    out.torsoRotY = s * (0.14 + solid);
-    out.chestRotY = -s * 0.08;
-    out.stretchY = 1 + Math.abs(c) * squash * 0.35;
+    out.rootLiftY = Math.abs(c) * 0.03 * amp * appealBounce;
+    out.lHipX = -s * 0.44 * amp;
+    out.rHipX = s * 0.44 * amp;
+    out.lKneeX = Math.max(0, c * 0.52 * amp);
+    out.rKneeX = Math.max(0, -c * 0.52 * amp);
+    out.lFootX = -out.lHipX * 0.22 - out.lKneeX * 0.15;
+    out.rFootX = -out.rHipX * 0.22 - out.rKneeX * 0.15;
+    out.lShoX = -Math.sin(angle - followLag) * 0.38 * amp;
+    out.rShoX = Math.sin(angle - followLag) * 0.38 * amp;
+    out.lElbBend = 0.22 + Math.max(0, Math.sin(angle - followLag)) * 0.24;
+    out.rElbBend = 0.22 + Math.max(0, -Math.sin(angle - followLag)) * 0.24;
+    out.torsoRotY = s * (0.06 + solid);
+    out.chestRotY = -s * 0.03;
+    out.stretchY = squash > 0 ? 1 + Math.abs(c) * squash * 0.2 : 1;
   } else if (action === 'run') {
     const s = Math.sin(angle);
     const c = Math.cos(angle);
