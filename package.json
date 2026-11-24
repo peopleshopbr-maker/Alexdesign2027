@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "build:wasm": "cd wasm-core && wasm-pack build --target bundler --out-dir ../src/wasm",
-    "dev": "if command -v wasm-pack >/dev/null 2>&1; then bun run build:wasm; fi && vite --port=3000 --host=0.0.0.0",
-    "build": "vite build",
+    "dev": "bun run build:wasm && vite --port=3000 --host=0.0.0.0",
+    "build": "bun run build:wasm && vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js src/wasm wasm-core/target",
     "lint": "tsc --noEmit"
@@ -40,7 +40,6 @@
     "tailwindcss": "^4.3.3",
     "tsx": "^4.21.0",
     "typescript": "^7.0.2",
-    "vite-plugin-top-level-await": "^1.6.0",
     "vite-plugin-wasm": "^3.6.0"
   }
 }

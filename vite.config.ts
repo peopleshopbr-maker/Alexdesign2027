@@ -3,7 +3,6 @@ import react from '@vitejs/plugin-react';
 import fs from 'fs';
 import path from 'path';
 import { defineConfig } from 'vite';
-import topLevelAwait from 'vite-plugin-top-level-await';
 import wasm from 'vite-plugin-wasm';
 
 export default defineConfig(({ mode }) => {
@@ -12,7 +11,6 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       wasm(),
-      topLevelAwait(),
       react(),
       tailwindcss(),
       // Copies src/assets into dist/ so root-relative URLs like
