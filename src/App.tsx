@@ -1765,7 +1765,7 @@ export default function App() {
           ) : null}
         </aside>
 
-        {/* Área Inferior: Timeline NLA (75% largura x 25% altura) */}
+        {/* Área Inferior: Timeline NLA / Dock (75% largura x 25% altura) */}
         <div className="col-start-1 row-start-2 h-full overflow-hidden bg-[#0b0e14]">
           {settings.sceneMode === 'animation' ? (
             <>
@@ -1780,42 +1780,29 @@ export default function App() {
                   e.target.value = '';
                 }}
               />
-              <AnimationTimelineDock
-                collapsed={timelineCollapsed}
-                onToggleCollapsed={() => setTimelineCollapsed((p) => !p)}
-                animation={settings.animation}
-                loadedClips={metrics.lodTelemetry.loadedClips}
+              <BottomDock
+                bottomOffset={bottomInset}
+                collapsed={dockCollapsed}
+                onToggleCollapsed={() => setDockCollapsed((p) => !p)}
+                settings={settings}
+                onUpdateSettings={handleUpdateSettings}
+                compareMode={compareMode}
+                onCycleCompareMode={handleCycleCompareMode}
+                autoOrbit={autoOrbit}
+                onToggleAutoOrbit={handleToggleAutoOrbit}
+                hasSelection={Boolean(selectedObject)}
                 isRecording={isRecording}
-                undoCount={undoCount}
-                redoCount={redoCount}
-                onUpdateAnimation={handleUpdateAnimation}
+                transparentPng={transparentPng}
+                exportingFramesLabel={exportingFramesLabel}
+                onToggleTransparentPng={() => setTransparentPng((p) => !p)}
+                onExportFramesZip={() => void handleExportFramesZip(1, transparentPng)}
+                onToggleRecordWebm={handleToggleRecordWebm}
+                onSnapToGround={handleSnapToGround}
+                onFocusObject={() => threeEngineRef.current?.focusSelectedObject()}
                 onUndo={handleUndo}
                 onRedo={handleRedo}
-                onToggleRecordWebm={handleToggleRecordWebm}
-                onOpenRetargetPicker={() => timelineRetargetInputRef.current?.click()}
-                onNotice={showNotice}
-                onAddNlaStrip={(label, sourceType, actionCycle, clipIndex, startAt) => {
-                  const strips = settings.animation.nlaStrips ?? [];
-                  const lastEnd = strips.reduce((acc: number, s) => Math.max(acc, s.endFrame), 0);
-                  const startFrame = Math.max(1, startAt ?? (lastEnd > 0 ? lastEnd + 1 : settings.animation.frameStart ?? 1));
-                  const endFrame = startFrame + 24;
-                  const newStrip = {
-                    id: `strip_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-                    trackId: 'base',
-                    label,
-                    sourceType,
-                    actionCycle,
-                    clipIndex,
-                    startFrame,
-                    endFrame,
-                  };
-                  handleUpdateAnimation({
-                    nlaStrips: [...strips, newStrip],
-                    frameEnd: Math.max(settings.animation.frameEnd ?? 60, endFrame),
-                    cycleMode: 'full_cycle',
-                    enabled: true,
-                  });
-                }}
+                undoCount={undoCount}
+                redoCount={redoCount}
               />
             </>
           ) : (
