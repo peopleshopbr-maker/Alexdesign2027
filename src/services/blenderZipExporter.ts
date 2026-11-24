@@ -296,18 +296,19 @@ SCENE_EXPOSURE = ${l.exposure.toFixed(3)}
 # ACTIONS PROCEDURALS — 12 CLIPS (Idle ativo por padrão)
 # ==============================================================================
 PROCEDURAL_ACTIONS = [
-    "Idle",      # Loop — respiração sutil
-    "Walk",      # Loop — ciclo de caminhada
-    "Run",       # Loop — ciclo de corrida
-    "Jump",      # Once — antecipação + voo + pouso
-    "Slash",     # Once — ataque de espada
-    "Hit",       # Once — recoil de impacto
-    "Death",     # Once — colapso progressivo
-    "Block",     # Loop — pose de guarda
-    "Fall",      # Loop — suspensão no ar
-    "Land",      # Once — absorção de impacto
-    "Dash",      # Once — esquiva explosiva
-    "Interact",  # Once — pose de vitória/interação
+    "Idle",         # Loop — respiração sutil
+    "Walk",         # Loop — ciclo de caminhada
+    "Run",          # Loop — ciclo de corrida
+    "Jump",         # Once — antecipação + voo + pouso
+    "Slash",        # Once — ataque de espada
+    "Hit",          # Once — recoil de impacto
+    "Death",        # Once — colapso progressivo
+    "Block",        # Loop — pose de guarda
+    "Fall",         # Loop — suspensão no ar
+    "Land",         # Once — absorção de impacto
+    "Dash",         # Once — esquiva explosiva
+    "Interact",     # Once — pose de vitória/interação
+    "ChestOpen",    # Once — abertura torácica (respiração profunda)
 ]
 
 def ensure_object_mode():

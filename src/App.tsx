@@ -66,6 +66,7 @@ const MULTI_CLIP_EXPORT_ACTIONS: AnimationActionCycle[] = [
   'land',
   'dash',
   'interact',
+  'chest_open',
 ];
 
 const DEFAULT_WEIGHT_PAINT: WeightPaintSettings = {

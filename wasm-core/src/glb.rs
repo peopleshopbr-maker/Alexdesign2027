@@ -342,6 +342,7 @@ pub enum AnimationClipType {
     Land,
     Dash,
     Interact,
+    ChestOpen,
 }
 
 impl AnimationClipType {
@@ -359,6 +360,7 @@ impl AnimationClipType {
             AnimationClipType::Land,
             AnimationClipType::Dash,
             AnimationClipType::Interact,
+            AnimationClipType::ChestOpen,
         ]
     }
 
@@ -376,6 +378,7 @@ impl AnimationClipType {
             AnimationClipType::Land => "Land",
             AnimationClipType::Dash => "Dash",
             AnimationClipType::Interact => "Interact",
+            AnimationClipType::ChestOpen => "ChestOpen",
         }
     }
 
@@ -393,6 +396,7 @@ impl AnimationClipType {
             AnimationClipType::Land => 0.45,
             AnimationClipType::Dash => 0.5,
             AnimationClipType::Interact => 1.2,
+            AnimationClipType::ChestOpen => 2.0,
         }
     }
 
@@ -1297,6 +1301,196 @@ fn generate_animation_keyframes(
                     kfs.push((t, rot, None));
                 }
                 result.push((idx, kfs));
+            }
+        }
+        AnimationClipType::ChestOpen => {
+            // Professional chest opening animation: deep inhalation, chest expansion, shoulders back, proud pose
+            // Phases: 0-30% inhale/expand, 30-60% hold/peak, 60-100% controlled release
+            let hip_idx = get_bone("Hips");
+            let spine_idx = get_bone("Spine");
+            let chest_idx = get_bone("Chest");
+            let neck_idx = get_bone("Neck");
+            let head_idx = get_bone("Head");
+            let l_upper_arm_idx = get_bone("LeftUpperArm");
+            let r_upper_arm_idx = get_bone("RightUpperArm");
+            let l_lower_arm_idx = get_bone("LeftLowerArm");
+            let r_lower_arm_idx = get_bone("RightLowerArm");
+            let l_clavicle_idx = get_bone("LeftClavicle").or_else(|| get_bone("LeftCollar"));
+            let r_clavicle_idx = get_bone("RightClavicle").or_else(|| get_bone("RightCollar"));
+
+            // Hips: slight counter-movement, subtle grounding
+            if let Some(idx) = hip_idx {
+                let mut kfs = Vec::new();
+                for f in 0..=frame_count {
+                    let t = f as f32 * dt;
+                    let progress = t / duration;
+                    let rot = if progress < 0.3 {
+                        // Slight anterior pelvic tilt during inhale
+                        [0.05 * (progress / 0.3).sin(), 0.0, 0.0]
+                    } else if progress < 0.7 {
+                        // Hold with subtle engagement
+                        [0.05 * (1.0 - (progress - 0.3) / 0.4).sin(), 0.0, 0.0]
+                    } else {
+                        // Release
+                        [0.05 * (1.0 - (progress - 0.7) / 0.3).sin(), 0.0, 0.0]
+                    };
+                    let trans = Some([
+                        0.0,
+                        if progress < 0.3 { -0.01 * (progress / 0.3).sin() } else { 0.0 },
+                        0.0,
+                    ]);
+                    kfs.push((t, rot, trans));
+                }
+                result.push((idx, kfs));
+            }
+
+            // Spine: lumbar extension during inhale, then thoracic
+            if let Some(idx) = spine_idx {
+                let mut kfs = Vec::new();
+                for f in 0..=frame_count {
+                    let t = f as f32 * dt;
+                    let progress = t / duration;
+                    let rot = if progress < 0.3 {
+                        // Lumbar extends slightly
+                        [-0.12 * (progress / 0.3).sin(), 0.0, 0.0]
+                    } else if progress < 0.7 {
+                        // Hold extension
+                        [-0.12, 0.0, 0.0]
+                    } else {
+                        // Controlled return
+                        [-0.12 * (1.0 - (progress - 0.7) / 0.3).sin(), 0.0, 0.0]
+                    };
+                    kfs.push((t, rot, None));
+                }
+                result.push((idx, kfs));
+            }
+
+            // Chest: main expansion - ribs widen, sternum lifts
+            if let Some(idx) = chest_idx {
+                let mut kfs = Vec::new();
+                for f in 0..=frame_count {
+                    let t = f as f32 * dt;
+                    let progress = t / duration;
+                    let rot = if progress < 0.3 {
+                        // Sternal lift and rib cage expansion
+                        [-0.35 * (progress / 0.3).sin(), 0.0, 0.0]
+                    } else if progress < 0.7 {
+                        // Peak expansion held
+                        [-0.35, 0.0, 0.0]
+                    } else {
+                        // Slow controlled exhale
+                        [-0.35 * (1.0 - (progress - 0.7) / 0.3).sin(), 0.0, 0.0]
+                    };
+                    let trans = Some([
+                        0.0,
+                        if progress < 0.3 { 0.02 * (progress / 0.3).sin() } else if progress < 0.7 { 0.02 } else { 0.02 * (1.0 - (progress - 0.7) / 0.3).sin() },
+                        0.0,
+                    ]);
+                    kfs.push((t, rot, trans));
+                }
+                result.push((idx, kfs));
+            }
+
+            // Clavicles: shoulders roll back and slightly down (scapular retraction/depression)
+            for (idx_opt, side) in [(l_clavicle_idx, 1.0), (r_clavicle_idx, -1.0)] {
+                if let Some(idx) = idx_opt {
+                    let mut kfs = Vec::new();
+                    for f in 0..=frame_count {
+                        let t = f as f32 * dt;
+                        let progress = t / duration;
+                        let rot = if progress < 0.3 {
+                            // Retract and depress
+                            [0.0, 0.0, side * 0.15 * (progress / 0.3).sin()]
+                        } else if progress < 0.7 {
+                            // Hold retraction
+                            [0.0, 0.0, side * 0.15]
+                        } else {
+                            // Release
+                            [0.0, 0.0, side * 0.15 * (1.0 - (progress - 0.7) / 0.3).sin()]
+                        };
+                        kfs.push((t, rot, None));
+                    }
+                    result.push((idx, kfs));
+                }
+            }
+
+            // Neck: slight extension (chin lifts slightly)
+            if let Some(idx) = neck_idx {
+                let mut kfs = Vec::new();
+                for f in 0..=frame_count {
+                    let t = f as f32 * dt;
+                    let progress = t / duration;
+                    let rot = if progress < 0.3 {
+                        [-0.08 * (progress / 0.3).sin(), 0.0, 0.0]
+                    } else if progress < 0.7 {
+                        [-0.08, 0.0, 0.0]
+                    } else {
+                        [-0.08 * (1.0 - (progress - 0.7) / 0.3).sin(), 0.0, 0.0]
+                    };
+                    kfs.push((t, rot, None));
+                }
+                result.push((idx, kfs));
+            }
+
+            // Head: follows neck, slight lift
+            if let Some(idx) = head_idx {
+                let mut kfs = Vec::new();
+                for f in 0..=frame_count {
+                    let t = f as f32 * dt;
+                    let progress = t / duration;
+                    let rot = if progress < 0.3 {
+                        [-0.05 * (progress / 0.3).sin(), 0.0, 0.0]
+                    } else if progress < 0.7 {
+                        [-0.05, 0.0, 0.0]
+                    } else {
+                        [-0.05 * (1.0 - (progress - 0.7) / 0.3).sin(), 0.0, 0.0]
+                    };
+                    kfs.push((t, rot, None));
+                }
+                result.push((idx, kfs));
+            }
+
+            // Upper arms: abduct slightly, externally rotate (palms opening)
+            for (idx_opt, side) in [(l_upper_arm_idx, 1.0), (r_upper_arm_idx, -1.0)] {
+                if let Some(idx) = idx_opt {
+                    let mut kfs = Vec::new();
+                    for f in 0..=frame_count {
+                        let t = f as f32 * dt;
+                        let progress = t / duration;
+                        let rot = if progress < 0.3 {
+                            // Abduct and externally rotate
+                            [side * 0.4 * (progress / 0.3).sin(), 0.0, side * 0.3 * (progress / 0.3).sin()]
+                        } else if progress < 0.7 {
+                            // Hold open position
+                            [side * 0.4, 0.0, side * 0.3]
+                        } else {
+                            // Return to neutral
+                            [side * 0.4 * (1.0 - (progress - 0.7) / 0.3).sin(), 0.0, side * 0.3 * (1.0 - (progress - 0.7) / 0.3).sin()]
+                        };
+                        kfs.push((t, rot, None));
+                    }
+                    result.push((idx, kfs));
+                }
+            }
+
+            // Lower arms: follow upper arms, palms facing forward/up
+            for (idx_opt, side) in [(l_lower_arm_idx, 1.0), (r_lower_arm_idx, -1.0)] {
+                if let Some(idx) = idx_opt {
+                    let mut kfs = Vec::new();
+                    for f in 0..=frame_count {
+                        let t = f as f32 * dt;
+                        let progress = t / duration;
+                        let rot = if progress < 0.3 {
+                            [0.2 * (progress / 0.3).sin(), 0.0, 0.0]
+                        } else if progress < 0.7 {
+                            [0.2, 0.0, 0.0]
+                        } else {
+                            [0.2 * (1.0 - (progress - 0.7) / 0.3).sin(), 0.0, 0.0]
+                        };
+                        kfs.push((t, rot, None));
+                    }
+                    result.push((idx, kfs));
+                }
             }
         }
     }

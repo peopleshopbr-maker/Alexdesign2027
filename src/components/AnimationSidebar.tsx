@@ -79,6 +79,7 @@ const ACTION_CYCLES: Array<{ id: AnimationActionCycle; label: string; spanFull?:
   { id: 'land', label: 'Pouso', loop: false },
   { id: 'dash', label: 'Dash', loop: false },
   { id: 'interact', label: 'Interagir', loop: false },
+  { id: 'chest_open', label: 'Abrir Tórax (Respiração)', loop: false },
 ];
 
 const PROP_SOCKETS: Array<{ id: PropSocketType; label: string }> = [

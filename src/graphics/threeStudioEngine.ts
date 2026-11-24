@@ -3442,6 +3442,7 @@ export class ThreeStudioEngine {
       land: 0.45,
       dash: 0.5,
       interact: 1.2,
+      chest_open: 2.0,
     };
     
     const fps = 30;

@@ -758,6 +758,50 @@ function evaluateActionParams(
     out.lHipX = -0.1;
     out.rHipX = 0.1;
     out.stretchY = 1;
+  } else if (action === 'chest_open') {
+    // Professional chest opening: deep inhalation, chest expansion, shoulders back, proud pose
+    // Phases: 0-30% inhale/expand, 30-60% hold/peak, 60-100% controlled release
+    const progress = angle / (Math.PI * 2);
+    const inhalePhase = Math.min(1, progress / 0.3);
+    const holdPhase = progress > 0.3 && progress < 0.7 ? (progress - 0.3) / 0.4 : 0;
+    const exhalePhase = Math.max(0, (progress - 0.7) / 0.3);
+    
+    // Calculate intensity: 0->1 during inhale, 1 during hold, 1->0 during exhale
+    let intensity = 0;
+    if (inhalePhase > 0) {
+      intensity = Math.sin(inhalePhase * Math.PI / 2);
+    } else if (holdPhase > 0) {
+      intensity = 1;
+    } else if (exhalePhase > 0) {
+      intensity = Math.cos(exhalePhase * Math.PI / 2);
+    }
+    
+    // Root: slight anterior pelvic tilt, grounding
+    out.rootLiftY = -intensity * 0.02;
+    
+    // Torso/Spine: lumbar extension
+    out.torsoRotX = -intensity * 0.12;
+    
+    // Chest: main expansion - sternum lift, rib cage widening
+    out.chestRotX = -intensity * 0.35;
+    
+    // Shoulders: scapular retraction and depression (shoulders back and down)
+    out.lShoX = intensity * 0.4;
+    out.rShoX = intensity * 0.4;
+    out.lShoZ = -drop + intensity * 0.3;
+    out.rShoZ = drop - intensity * 0.3;
+    
+    // Arms: slight abduction, external rotation (palms opening)
+    out.lElbBend = 0.22 - intensity * 0.1;
+    out.rElbBend = 0.22 - intensity * 0.1;
+    
+    // Legs: slight widening for stability
+    out.lHipX = intensity * 0.05;
+    out.rHipX = -intensity * 0.05;
+    out.lKneeX = intensity * 0.03;
+    out.rKneeX = intensity * 0.03;
+    
+    out.stretchY = 1 + intensity * 0.02;
   }
 
   return out;

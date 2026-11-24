@@ -123,7 +123,8 @@ export type AnimationActionCycle =
   | 'fall'
   | 'land'
   | 'dash'
-  | 'interact';
+  | 'interact'
+  | 'chest_open';
 
 export type AutoRigPreset = 'biped' | 'flex_spine';
 

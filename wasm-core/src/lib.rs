@@ -284,6 +284,7 @@ pub fn generate_rigged_animation_glb(scene_data: JsValue, clip_type: Option<Stri
             "land" => AnimationClipType::Land,
             "dash" => AnimationClipType::Dash,
             "interact" => AnimationClipType::Interact,
+            "chest_open" => AnimationClipType::ChestOpen,
             _ => AnimationClipType::Idle,
         }
     } else {

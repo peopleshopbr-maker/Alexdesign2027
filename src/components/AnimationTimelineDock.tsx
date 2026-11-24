@@ -81,6 +81,7 @@ const STRIP_PALETTE_ACTIONS: Array<{ id: AnimationActionCycle; label: string; co
   { id: 'land', label: 'Land', color: 'bg-orange-500/25 border-orange-400/55 text-orange-100' },
   { id: 'dash', label: 'Dash', color: 'bg-cyan-500/25 border-cyan-400/55 text-cyan-100' },
   { id: 'interact', label: 'Interact', color: 'bg-pink-500/25 border-pink-400/55 text-pink-100' },
+  { id: 'chest_open', label: 'Chest Open', color: 'bg-violet-500/25 border-violet-400/55 text-violet-100' },
 ];
 
 const FPS_CYCLE: Array<12 | 24 | 30 | 60> = [12, 24, 30, 60];
