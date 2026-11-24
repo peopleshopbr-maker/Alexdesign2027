@@ -296,13 +296,13 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             <Upload className="w-3.5 h-3.5 text-sky-400" />
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="text-xs font-bold tracking-wide text-white uppercase">Importar &amp; Exportar</h3>
+            <h3 className="text-[9px] font-bold tracking-wide text-white uppercase">Importar &amp; Exportar</h3>
             <div className="flex items-center gap-1 shrink-0">
-              <span className="text-[10px] font-mono tabular-nums text-sky-300 bg-sky-500/15 border border-sky-400/30 px-1.5 py-0.5 rounded-md whitespace-nowrap">
+              <span className="text-[9px] font-mono tabular-nums text-sky-300 bg-sky-500/15 border border-sky-400/30 px-1.5 py-0.5 rounded-md whitespace-nowrap">
                 {meshCountDisplay} malha(s)
               </span>
             </div>
-            <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">
+            <p className="text-[9px] text-slate-400 mt-0.5 leading-relaxed">
               Traga malhas do <span className="text-slate-200">Blender</span> (`.glb`, `.gltf`, `.zip`) e exporte no padrão <span className="text-slate-200">Blender 5.3+</span>.
             </p>
           </div>
@@ -332,8 +332,8 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             <Upload className="w-3.5 h-3.5 text-sky-400" />
           </div>
           <div className="flex flex-col gap-0.5">
-            <span className="text-xs font-semibold text-white">Clique ou Arraste .GLB / .GLTF / .ZIP</span>
-            <span className="text-[10px] text-slate-400">Persistente em todos os modos do estúdio</span>
+            <span className="text-[9px] font-semibold text-white">Clique ou Arraste .GLB / .GLTF / .ZIP</span>
+            <span className="text-[9px] text-slate-400">Persistente em todos os modos do estúdio</span>
           </div>
         </button>
 
@@ -341,10 +341,10 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
           <div className="rounded-xl bg-[#090c13] border border-white/10 p-2 flex flex-col gap-1.5">
             <div className="flex items-center justify-between gap-1">
               <div className="min-w-0">
-                <span className="text-[10px] text-slate-400 block">Modelo Ativo</span>
-                <span className="text-xs font-semibold text-white truncate block">{props.lodTelemetry.loadedModelName}</span>
+                <span className="text-[9px] text-slate-400 block">Modelo Ativo</span>
+                <span className="text-[9px] font-semibold text-white truncate block">{props.lodTelemetry.loadedModelName}</span>
               </div>
-              <span className={`text-[10px] font-mono tabular-nums px-1 py-0.5 rounded border shrink-0 ${props.lodTelemetry.boneCount! > 0 ? 'text-emerald-300 bg-emerald-500/15 border-emerald-400/30' : 'text-amber-300 bg-amber-500/15 border-amber-400/30'}`}>
+              <span className={`text-[9px] font-mono tabular-nums px-1 py-0.5 rounded border shrink-0 ${props.lodTelemetry.boneCount! > 0 ? 'text-emerald-300 bg-emerald-500/15 border-emerald-400/30' : 'text-amber-300 bg-amber-500/15 border-amber-400/30'}`}>
                 {props.lodTelemetry.boneCount! > 0 ? `${props.lodTelemetry.boneCount} ossos` : 'Sem ossos'}
               </span>
             </div>
@@ -352,7 +352,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
               <button
                 type="button"
                 onClick={props.onInsertRiggedHumanoid}
-                className="h-8 px-2 text-[10px] font-medium rounded-lg bg-sky-400 hover:bg-sky-300 text-slate-950 flex items-center justify-center gap-1 cursor-pointer"
+                className="h-8 px-2 text-[9px] font-medium rounded-lg bg-sky-400 hover:bg-sky-300 text-slate-950 flex items-center justify-center gap-1 cursor-pointer"
               >
                 <Bone className="w-3 h-3" />
                 <span>Inserir Malha (19 Ossos)</span>
@@ -362,7 +362,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
                   key={p.id}
                   type="button"
                   onClick={() => props.onChangeExportProfile?.(p.id)}
-                  className={`h-8 px-2 text-[10px] font-medium rounded-lg border cursor-pointer flex items-center justify-center ${props.exportProfile === p.id ? 'bg-sky-500/20 text-sky-200 border-sky-400/50' : 'bg-[#121826] text-slate-300 border-white/10 hover:text-white'}`}
+                  className={`h-8 px-2 text-[9px] font-medium rounded-lg border cursor-pointer flex items-center justify-center ${props.exportProfile === p.id ? 'bg-sky-500/20 text-sky-200 border-sky-400/50' : 'bg-[#121826] text-slate-300 border-white/10 hover:text-white'}`}
                 >
                   {p.label === 'Padrão' ? 'LOD0 Alta' : p.label === 'Mixamo' ? 'LOD1 Média' : p.label === 'UE5' ? 'LOD2 Baixa' : p.label}
                 </button>
@@ -371,28 +371,28 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
           </div>
         ) : (
           <div className="rounded-xl bg-[#090c13] border border-white/10 p-2 flex flex-col gap-1.5">
-            <div className="flex items-center gap-1 text-xs font-semibold text-slate-200">
+            <div className="flex items-center gap-1 text-[9px] font-semibold text-slate-200">
               <Layers className="w-3 h-3 text-sky-400" />
               <span>Exemplo Multi-LOD Ativo</span>
             </div>
             <div className="grid grid-cols-3 gap-1 text-center">
               <div className="rounded-lg bg-[#121826] border border-white/8 py-1 px-0.5">
-                <span className="text-[10px] text-slate-400 block">LOD0 (Alta)</span>
-                <span className="text-xs font-mono tabular-nums text-sky-300">{props.lodTelemetry?.lod0Count}</span>
+                <span className="text-[9px] text-slate-400 block">LOD0 (Alta)</span>
+                <span className="text-[9px] font-mono tabular-nums text-sky-300">{props.lodTelemetry?.lod0Count}</span>
               </div>
               <div className="rounded-lg bg-[#121826] border border-white/8 py-1 px-0.5">
-                <span className="text-[10px] text-slate-400 block">LOD1 (Média)</span>
-                <span className="text-xs font-mono tabular-nums text-emerald-300">{props.lodTelemetry?.lod1Count}</span>
+                <span className="text-[9px] text-slate-400 block">LOD1 (Média)</span>
+                <span className="text-[9px] font-mono tabular-nums text-emerald-300">{props.lodTelemetry?.lod1Count}</span>
               </div>
               <div className="rounded-lg bg-[#121826] border border-white/8 py-1 px-0.5">
-                <span className="text-[10px] text-slate-400 block">LOD2 (Baixa)</span>
-                <span className="text-xs font-mono tabular-nums text-amber-300">{props.lodTelemetry?.lod2Count}</span>
+                <span className="text-[9px] text-slate-400 block">LOD2 (Baixa)</span>
+                <span className="text-[9px] font-mono tabular-nums text-amber-300">{props.lodTelemetry?.lod2Count}</span>
               </div>
             </div>
             <button
               type="button"
               onClick={props.onInsertRiggedHumanoid}
-              className="w-full h-8 px-2 text-[10px] font-semibold rounded-lg bg-sky-400 hover:bg-sky-300 text-slate-950 flex items-center justify-center gap-1 cursor-pointer"
+              className="w-full h-8 px-2 text-[9px] font-semibold rounded-lg bg-sky-400 hover:bg-sky-300 text-slate-950 flex items-center justify-center gap-1 cursor-pointer"
             >
               <Bone className="w-3 h-3" />
               <span>Inserir Malha com Ossos (19 Ossos)</span>
@@ -404,14 +404,14 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
           <div className="flex items-center justify-between gap-1">
             <div className="flex items-center gap-1 min-w-0">
               <Download className="w-3 h-3 text-amber-400 shrink-0" />
-              <span className="text-xs font-semibold text-white truncate">Exportar Blender 5.3+</span>
+              <span className="text-[9px] font-semibold text-white truncate">Exportar Blender 5.3+</span>
             </div>
-            <span className="text-[10px] font-mono text-emerald-300 bg-emerald-500/15 border border-emerald-400/30 px-1 py-0.5 rounded shrink-0">
+            <span className="text-[9px] font-mono text-emerald-300 bg-emerald-500/15 border border-emerald-400/30 px-1 py-0.5 rounded shrink-0">
               5.3+ Ready
             </span>
           </div>
           <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] uppercase tracking-wider text-slate-400 block">Perfil de Ossos (Exportação Engine)</span>
+            <span className="text-[9px] uppercase tracking-wider text-slate-400 block">Perfil de Ossos (Exportação Engine)</span>
             <div className="grid grid-cols-5 gap-0.5">
               {EXPORT_PROFILES.map((p) => (
                 <button
@@ -429,7 +429,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             type="button"
             aria-pressed={props.multiClipExport}
             onClick={props.onToggleMultiClipExport}
-            className={`w-full h-7 px-1.5 text-[10px] font-medium rounded-lg border flex items-center justify-between cursor-pointer ${props.multiClipExport ? 'bg-sky-500/20 text-sky-100 border-sky-400/50' : 'bg-[#121826] text-slate-300 border-white/10 hover:text-white'}`}
+            className={`w-full h-7 px-1.5 text-[9px] font-medium rounded-lg border flex items-center justify-between cursor-pointer ${props.multiClipExport ? 'bg-sky-500/20 text-sky-100 border-sky-400/50' : 'bg-[#121826] text-slate-300 border-white/10 hover:text-white'}`}
           >
             <span>Pacote Multi-Clipes NLA (.GLB)</span>
             <span className="font-mono text-[9px]">{props.multiClipExport ? 'ON (5 Ações)' : 'OFF'}</span>
@@ -438,7 +438,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             type="button"
             disabled={props.exportingGlb}
             onClick={() => props.onExportGlb?.(props.exportProfile)}
-            className={`w-full h-7 px-2 text-[10px] font-medium rounded-lg bg-[#121826] hover:bg-[#192235] disabled:opacity-60 text-slate-200 border border-white/10 flex items-center justify-center gap-1 cursor-pointer ${props.exportingGlb ? 'opacity-80 cursor-not-allowed' : ''}`}
+            className={`w-full h-7 px-2 text-[9px] font-medium rounded-lg bg-[#121826] hover:bg-[#192235] disabled:opacity-60 text-slate-200 border border-white/10 flex items-center justify-center gap-1 cursor-pointer ${props.exportingGlb ? 'opacity-80 cursor-not-allowed' : ''}`}
           >
             <Download className="w-3 h-3 text-sky-400" />
             <span>{props.exportingGlb ? 'Exportando .GLB...' : `Exportar .GLB (${props.exportProfile})`}</span>
@@ -447,7 +447,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             type="button"
             disabled={props.exportingBlenderZip}
             onClick={() => props.onExportBlenderZip?.(props.exportProfile)}
-            className="w-full h-8 px-2 text-xs font-semibold rounded-lg bg-amber-400 hover:bg-amber-300 disabled:opacity-60 text-slate-950 flex items-center justify-center gap-1 cursor-pointer"
+            className="w-full h-8 px-2 text-[9px] font-semibold rounded-lg bg-amber-400 hover:bg-amber-300 disabled:opacity-60 text-slate-950 flex items-center justify-center gap-1 cursor-pointer"
           >
             <Download className="w-3 h-3" />
             <span>{props.exportingBlenderZip ? 'Empacotando Blender 5.3+...' : 'Exportar .ZIP Completo (Blender 5.3+)'}</span>
@@ -458,20 +458,20 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
           <div className="flex items-center justify-between gap-1">
             <div className="flex items-center gap-1 min-w-0">
               <Film className="w-3 h-3 text-sky-400 shrink-0" />
-              <span className="text-xs font-semibold text-white truncate">Exportar PNG &amp; Quadro a Quadro</span>
+              <span className="text-[9px] font-semibold text-white truncate">Exportar PNG &amp; Quadro a Quadro</span>
             </div>
             <button
               type="button"
               aria-pressed={props.transparentPng}
               onClick={props.onToggleTransparentPng}
-              className={`h-6 px-1.5 text-[10px] font-medium rounded-md border flex items-center gap-0.5 cursor-pointer shrink-0 ${props.transparentPng ? 'bg-sky-500/20 text-sky-200 border-sky-400/50' : 'bg-[#121826] text-slate-300 border-white/10'}`}
+              className={`h-6 px-1.5 text-[9px] font-medium rounded-md border flex items-center gap-0.5 cursor-pointer shrink-0 ${props.transparentPng ? 'bg-sky-500/20 text-sky-200 border-sky-400/50' : 'bg-[#121826] text-slate-300 border-white/10'}`}
             >
               <Blend className="w-2.5 h-2.5" />
               <span>Alpha: {props.transparentPng ? 'ON' : 'OFF'}</span>
             </button>
           </div>
           <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] uppercase tracking-wider text-slate-400 block">Resolução de Captura</span>
+            <span className="text-[9px] uppercase tracking-wider text-slate-400 block">Resolução de Captura</span>
             <div className="grid grid-cols-5 gap-0.5">
               {['Tela', '1:1', '16:9', '9:16', '4K'].map((label, i) => {
                 const id = ['viewport', '1080x1080', '1920x1080', '1080x1920', '3840x2160'][i];
@@ -492,7 +492,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             <button
               type="button"
               onClick={() => props.onCaptureFrame?.(true)}
-              className="h-7 px-1.5 text-[10px] font-medium rounded-lg bg-[#121826] hover:bg-[#192235] text-sky-200 border border-sky-400/35 flex items-center justify-center gap-0.5 cursor-pointer"
+              className="h-7 px-1.5 text-[9px] font-medium rounded-lg bg-[#121826] hover:bg-[#192235] text-sky-200 border border-sky-400/35 flex items-center justify-center gap-0.5 cursor-pointer"
             >
               <Film className="w-2.5 h-2.5" />
               <span>PNG Transp.</span>
@@ -500,7 +500,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             <button
               type="button"
               onClick={() => props.onCaptureFrame?.(false)}
-              className="h-7 px-1.5 text-[10px] font-medium rounded-lg bg-[#121826] hover:bg-[#192235] text-slate-200 border border-white/10 flex items-center justify-center gap-0.5 cursor-pointer"
+              className="h-7 px-1.5 text-[9px] font-medium rounded-lg bg-[#121826] hover:bg-[#192235] text-slate-200 border border-white/10 flex items-center justify-center gap-0.5 cursor-pointer"
             >
               <Film className="w-2.5 h-2.5 text-slate-400" />
               <span>PNG Fundo</span>
@@ -510,7 +510,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             type="button"
             aria-pressed={props.turntable360}
             onClick={props.onToggleTurntable360}
-            className={`w-full h-7 px-1.5 text-[10px] font-medium rounded-lg border flex items-center justify-between cursor-pointer ${props.turntable360 ? 'bg-sky-500/20 text-sky-100 border-sky-400/50' : 'bg-[#121826] text-slate-300 border-white/10 hover:text-white'}`}
+            className={`w-full h-7 px-1.5 text-[9px] font-medium rounded-lg border flex items-center justify-between cursor-pointer ${props.turntable360 ? 'bg-sky-500/20 text-sky-100 border-sky-400/50' : 'bg-[#121826] text-slate-300 border-white/10 hover:text-white'}`}
           >
             <span className="flex items-center gap-1">
               <Zap className="w-2.5 h-2.5 text-sky-400" />
@@ -522,7 +522,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             type="button"
             disabled={Boolean(props.exportingFramesLabel)}
             onClick={() => props.onExportFramesZip?.(1, props.transparentPng)}
-            className="w-full h-8 px-2 text-xs font-semibold rounded-lg bg-emerald-400 hover:bg-emerald-300 disabled:opacity-60 text-slate-950 flex items-center justify-center gap-1 cursor-pointer"
+            className="w-full h-8 px-2 text-[9px] font-semibold rounded-lg bg-emerald-400 hover:bg-emerald-300 disabled:opacity-60 text-slate-950 flex items-center justify-center gap-1 cursor-pointer"
           >
             <Film className="w-3 h-3" />
             <span>{props.exportingFramesLabel ? `Exportando ${props.exportingFramesLabel}...` : props.transparentPng ? 'Exportar Quadro a Quadro (.ZIP PNG Transp.)' : 'Exportar Quadro a Quadro (.ZIP PNG Fundo)'}</span>
@@ -531,7 +531,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             type="button"
             disabled={Boolean(props.exportingSpriteSheetLabel)}
             onClick={() => props.onExportSpriteSheetZip?.(1, props.transparentPng)}
-            className="w-full h-7 px-2 text-[10px] font-semibold rounded-lg bg-sky-500/20 hover:bg-sky-500/30 disabled:opacity-60 text-sky-100 border border-sky-400/45 flex items-center justify-center gap-1 cursor-pointer"
+            className="w-full h-7 px-2 text-[9px] font-semibold rounded-lg bg-sky-500/20 hover:bg-sky-500/30 disabled:opacity-60 text-sky-100 border border-sky-400/45 flex items-center justify-center gap-1 cursor-pointer"
           >
             <Grid className="w-3 h-3 text-sky-300" />
             <span>{props.exportingSpriteSheetLabel ? `Montando Sheet ${props.exportingSpriteSheetLabel}...` : 'Exportar Sprite Sheet (.ZIP PNG + JSON)'}</span>
@@ -547,15 +547,15 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
         <div className="flex items-start gap-2 border-b border-white/10 pb-1 mb-1">
           <Box className="w-4 h-4 text-sky-400 shrink-0" />
           <div className="min-w-0 flex-1">
-            <h3 className="text-xs font-bold tracking-wide text-white uppercase">Materiais &amp; Câmera</h3>
-            <p className="text-[10px] text-slate-400 mt-0.5">Motor PBR · Materiais físicos · Vista explodida</p>
+            <h3 className="text-[9px] font-bold tracking-wide text-white uppercase">Materiais &amp; Câmera</h3>
+            <p className="text-[9px] text-slate-400 mt-0.5">Motor PBR · Materiais físicos · Vista explodida</p>
           </div>
         </div>
 
         <div className="rounded-lg bg-[#090c13] border border-white/10 p-2 flex flex-col gap-1.5">
           <div className="flex items-center justify-between gap-1">
-            <span className="text-[10px] font-semibold text-slate-400 block">Acabamento PBR (12 opções)</span>
-            <span className="text-[10px] font-mono text-slate-500">{FINISH_OPTIONS.length}</span>
+            <span className="text-[9px] font-semibold text-slate-400 block">Acabamento PBR (12 opções)</span>
+            <span className="text-[9px] font-mono text-slate-500">{FINISH_OPTIONS.length}</span>
           </div>
           <div className="grid grid-cols-4 gap-0.5">
             {FINISH_OPTIONS.map((f) => {
@@ -576,7 +576,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
         </div>
 
         <div className="rounded-lg bg-[#090c13] border border-white/10 p-2 flex flex-col gap-1.5">
-          <div className="flex items-center justify-between gap-1 text-[10px]">
+          <div className="flex items-center justify-between gap-1 text-[9px]">
             <span className="font-medium text-slate-200">Vista Explodida</span>
             <span className="font-mono text-sky-300">{Math.round((props.explosion ?? 0) * 100)}%</span>
           </div>
@@ -593,7 +593,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             <button
               type="button"
               onClick={props.onRestoreGltfMaterials}
-              className="w-full h-7 px-2 text-[10px] font-medium rounded-lg bg-[#121826] hover:bg-[#192235] text-slate-200 border border-white/10 flex items-center justify-center cursor-pointer"
+              className="w-full h-7 px-2 text-[9px] font-medium rounded-lg bg-[#121826] hover:bg-[#192235] text-slate-200 border border-white/10 flex items-center justify-center cursor-pointer"
             >
               Restaurar Material Original do GLB
             </button>
@@ -601,7 +601,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
         </div>
 
         <div className="rounded-lg bg-[#090c13] border border-white/10 p-2 flex flex-col gap-1.5">
-          <div className="flex items-center justify-between gap-1 text-[10px]">
+          <div className="flex items-center justify-between gap-1 text-[9px]">
             <span className="font-medium text-slate-200">Velocidade da Simulação</span>
             <span className="font-mono text-sky-300">{props.speed?.toFixed(1) ?? '1.0'}x</span>
           </div>
@@ -617,7 +617,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
         </div>
 
         <div className="rounded-lg bg-[#090c13] border border-white/10 p-2 flex flex-col gap-1.5">
-          <div className="flex items-center justify-between gap-1 text-[10px]">
+          <div className="flex items-center justify-between gap-1 text-[9px]">
             <span className="font-medium text-slate-200">Presets de Câmera</span>
           </div>
           <div className="grid grid-cols-5 gap-0.5">
@@ -635,7 +635,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
         </div>
 
         <div className="rounded-lg bg-[#090c13] border border-white/10 p-2 flex flex-col gap-1.5">
-          <div className="flex items-center justify-between gap-1 text-[10px]">
+          <div className="flex items-center justify-between gap-1 text-[9px]">
             <span className="font-medium text-slate-200">Modo de Visualização</span>
           </div>
           <div className="grid grid-cols-4 gap-0.5">
@@ -656,7 +656,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
         </div>
 
         <div className="rounded-lg bg-[#090c13] border border-white/10 p-2 flex flex-col gap-1.5">
-          <div className="flex items-center justify-between gap-1 text-[10px]">
+          <div className="flex items-center justify-between gap-1 text-[9px]">
             <span className="font-medium text-slate-200">Pós-Processamento</span>
             <button
               type="button"
@@ -668,7 +668,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             </button>
           </div>
           <div className="flex flex-col gap-0.5">
-            <div className="flex items-center justify-between text-[10px]">
+            <div className="flex items-center justify-between text-[9px]">
               <span className="text-slate-400">Bloom</span>
               <span className="font-mono text-sky-300">{props.postProcessing?.bloomStrength?.toFixed(2) ?? '0.00'}</span>
             </div>
@@ -683,7 +683,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             />
           </div>
           <div className="flex flex-col gap-0.5">
-            <div className="flex items-center justify-between text-[10px]">
+            <div className="flex items-center justify-between text-[9px]">
               <span className="text-slate-400">Film Grain</span>
               <span className="font-mono text-sky-300">{props.postProcessing?.grainAmount?.toFixed(3) ?? '0.000'}</span>
             </div>
@@ -700,7 +700,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
         </div>
 
         <div className="rounded-lg bg-[#090c13] border border-white/10 p-2 flex flex-col gap-1.5">
-          <div className="flex items-center gap-1 text-[10px] font-semibold text-slate-400 uppercase mb-1">
+          <div className="flex items-center gap-1 text-[9px] font-semibold text-slate-400 uppercase mb-1">
             <Sun className="w-3 h-3" />
             <span>Iluminação &amp; HDRI</span>
           </div>
@@ -720,7 +720,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             })}
           </div>
           <div className="flex flex-col gap-0.5">
-            <div className="flex items-center justify-between text-[10px]">
+            <div className="flex items-center justify-between text-[9px]">
               <span className="text-slate-400">Exposição</span>
               <span className="font-mono text-sky-300">{props.lighting?.exposure?.toFixed(2) ?? '1.00'}</span>
             </div>
@@ -735,7 +735,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             />
           </div>
           <div className="flex flex-col gap-0.5">
-            <div className="flex items-center justify-between text-[10px]">
+            <div className="flex items-center justify-between text-[9px]">
               <span className="text-slate-400">Intensidade HDRI</span>
               <span className="font-mono text-sky-300">{props.lighting?.envIntensity?.toFixed(2) ?? '1.00'}</span>
             </div>
@@ -760,8 +760,8 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
         <div className="flex items-start gap-2 border-b border-white/10 pb-1 mb-1">
           <Bone className="w-4 h-4 text-sky-400 shrink-0" />
           <div className="min-w-0 flex-1">
-            <h3 className="text-xs font-bold tracking-wide text-white uppercase">Rig &amp; Animação</h3>
-            <p className="text-[10px] text-slate-400 mt-0.5">Pistas NLA · Ciclos de Ação · Keyframes</p>
+            <h3 className="text-[9px] font-bold tracking-wide text-white uppercase">Rig &amp; Animação</h3>
+            <p className="text-[9px] text-slate-400 mt-0.5">Pistas NLA · Ciclos de Ação · Keyframes</p>
           </div>
         </div>
 
@@ -771,7 +771,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
               type="button"
               aria-pressed={!animation.playing}
               onClick={() => props.onUpdateAnimation({ playing: false })}
-              className={`h-7 text-xs font-medium rounded-lg flex items-center justify-center gap-1 cursor-pointer ${!animation.playing ? 'bg-[#1e293b] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
+              className={`h-7 text-[9px] font-medium rounded-lg flex items-center justify-center gap-1 cursor-pointer ${!animation.playing ? 'bg-[#1e293b] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
             >
               <Pause className="w-3 h-3" />
               <span>Editar</span>
@@ -780,7 +780,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
               type="button"
               aria-pressed={animation.playing}
               onClick={() => props.onUpdateAnimation({ playing: true, enabled: true, cycleMode: 'full_cycle' })}
-              className={`h-7 text-xs font-medium rounded-lg flex items-center justify-center gap-1 cursor-pointer ${animation.playing ? 'bg-emerald-500/25 text-emerald-200 border border-emerald-400/35' : 'text-slate-400 hover:text-white hover:bg-white/10 border border-transparent'}`}
+              className={`h-7 text-[9px] font-medium rounded-lg flex items-center justify-center gap-1 cursor-pointer ${animation.playing ? 'bg-emerald-500/25 text-emerald-200 border border-emerald-400/35' : 'text-slate-400 hover:text-white hover:bg-white/10 border border-transparent'}`}
             >
               <Play className="w-3 h-3" />
               <span>Play</span>
@@ -791,7 +791,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
               type="button"
               aria-pressed={animation.cycleMode === 'static'}
               onClick={() => props.onUpdateAnimation({ cycleMode: 'static', playing: false })}
-              className={`h-7 px-1 text-[10px] font-medium rounded-lg border cursor-pointer flex items-center justify-center ${animation.cycleMode === 'static' ? 'bg-sky-500/20 text-sky-200 border-sky-400/50' : 'bg-[#121826] text-slate-400 border-white/10 hover:text-white'}`}
+              className={`h-7 px-1 text-[9px] font-medium rounded-lg border cursor-pointer flex items-center justify-center ${animation.cycleMode === 'static' ? 'bg-sky-500/20 text-sky-200 border-sky-400/50' : 'bg-[#121826] text-slate-400 border-white/10 hover:text-white'}`}
             >
               Pose Estática (1f)
             </button>
@@ -799,7 +799,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
               type="button"
               aria-pressed={animation.cycleMode === 'full_cycle'}
               onClick={() => props.onUpdateAnimation({ cycleMode: 'full_cycle', playing: true, enabled: true })}
-              className={`h-7 px-1 text-[10px] font-medium rounded-lg border cursor-pointer flex items-center justify-center ${animation.cycleMode === 'full_cycle' ? 'bg-sky-500/20 text-sky-200 border-sky-400/50' : 'bg-[#121826] text-slate-400 border-white/10 hover:text-white'}`}
+              className={`h-7 px-1 text-[9px] font-medium rounded-lg border cursor-pointer flex items-center justify-center ${animation.cycleMode === 'full_cycle' ? 'bg-sky-500/20 text-sky-200 border-sky-400/50' : 'bg-[#121826] text-slate-400 border-white/10 hover:text-white'}`}
             >
               Ciclo Completo (60f)
             </button>
@@ -810,7 +810,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
           <button
             type="button"
             onClick={() => props.onUpdateAnimation({ rotationMode: animation.rotationMode === 'quaternion' ? 'euler' : 'quaternion' })}
-            className="h-7 px-1 text-[10px] font-medium rounded-lg bg-[#121826] hover:bg-[#192235] text-slate-200 border border-white/10 cursor-pointer flex items-center justify-center whitespace-nowrap"
+            className="h-7 px-1 text-[9px] font-medium rounded-lg bg-[#121826] hover:bg-[#192235] text-slate-200 border border-white/10 cursor-pointer flex items-center justify-center whitespace-nowrap"
           >
             Rotação: {animation.rotationMode === 'quaternion' ? 'Quaternion' : 'Euler'}
           </button>
@@ -825,7 +825,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
                 : [...animation.keyframes, f].sort((a, b) => a - b);
               props.onUpdateAnimation({ keyframes: nextKf });
             }}
-            className={`h-7 px-1 text-[10px] font-medium rounded-lg border cursor-pointer flex items-center justify-center whitespace-nowrap ${hasCurrentKeyframe ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 border-amber-400/40' : 'bg-sky-500/15 hover:bg-sky-500/25 text-sky-200 border-sky-400/40'}`}
+            className={`h-7 px-1 text-[9px] font-medium rounded-lg border cursor-pointer flex items-center justify-center whitespace-nowrap ${hasCurrentKeyframe ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 border-amber-400/40' : 'bg-sky-500/15 hover:bg-sky-500/25 text-sky-200 border-sky-400/40'}`}
           >
             {hasCurrentKeyframe ? `Remover Key (${animation.currentFrame}f)` : `+ Keyframe (${animation.currentFrame}f)`}
           </button>
@@ -836,7 +836,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             type="button"
             aria-pressed={animation.inPlace}
             onClick={() => props.onUpdateAnimation({ inPlace: !animation.inPlace })}
-            className={`h-7 px-1 text-[10px] font-medium rounded-lg border cursor-pointer flex items-center justify-center ${animation.inPlace ? 'bg-sky-500/20 text-sky-200 border-sky-400/55' : 'bg-[#121826] text-slate-300 border-white/10 hover:text-white'}`}
+            className={`h-7 px-1 text-[9px] font-medium rounded-lg border cursor-pointer flex items-center justify-center ${animation.inPlace ? 'bg-sky-500/20 text-sky-200 border-sky-400/55' : 'bg-[#121826] text-slate-300 border-white/10 hover:text-white'}`}
           >
             No Lugar: {animation.inPlace ? 'In-Place' : 'Raiz'}
           </button>
@@ -848,7 +848,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
               type="button"
               aria-pressed={animation.playing}
               onClick={() => props.onUpdateAnimation({ playing: !animation.playing, enabled: true, cycleMode: 'full_cycle' })}
-              className={`h-8 px-3 text-xs font-semibold rounded-lg border flex items-center gap-1 shrink-0 cursor-pointer ${animation.playing ? 'bg-emerald-500/25 text-emerald-200 border-emerald-400/50' : 'bg-sky-400 hover:bg-sky-300 text-slate-950 border-transparent'}`}
+              className={`h-8 px-3 text-[9px] font-semibold rounded-lg border flex items-center gap-1 shrink-0 cursor-pointer ${animation.playing ? 'bg-emerald-500/25 text-emerald-200 border-emerald-400/50' : 'bg-sky-400 hover:bg-sky-300 text-slate-950 border-transparent'}`}
             >
               {animation.playing ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
               <span>{animation.playing ? 'Pausar' : 'Animar'}</span>
@@ -862,7 +862,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
               onChange={(e) => props.onUpdateAnimation({ currentFrame: Number(e.target.value), playing: false, cycleMode: 'full_cycle' })}
               className="studio-slider flex-1"
             />
-            <span className="text-xs font-mono tabular-nums text-slate-200 w-8 text-right shrink-0">
+            <span className="text-[9px] font-mono tabular-nums text-slate-200 w-8 text-right shrink-0">
               {animation.currentFrame}f
             </span>
           </div>
@@ -872,7 +872,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
           <button
             type="button"
             onClick={props.onInsertRiggedHumanoid}
-            className="w-full h-7 px-2 text-[10px] font-semibold rounded-lg bg-sky-500/15 hover:bg-sky-500/25 text-sky-200 border border-sky-400/40 flex items-center justify-center gap-1 cursor-pointer"
+            className="w-full h-7 px-2 text-[9px] font-semibold rounded-lg bg-sky-500/15 hover:bg-sky-500/25 text-sky-200 border border-sky-400/40 flex items-center justify-center gap-1 cursor-pointer"
           >
             <Bone className="w-3 h-3" />
             <span>Inserir Personagem com Ossos (19 Ossos)</span>
@@ -881,7 +881,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
 
         <div className="rounded-lg bg-[#090c13] border border-white/10 p-2 flex flex-col gap-1.5">
           <div className="flex items-center justify-between gap-1">
-            <span className="text-[10px] font-semibold text-slate-400 block">Ciclos de Ação (NLA Strips)</span>
+            <span className="text-[9px] font-semibold text-slate-400 block">Ciclos de Ação (NLA Strips)</span>
             <button
               type="button"
               onClick={() => props.onUpdateAnimation({ nlaStrips: [], cycleMode: 'full_cycle', enabled: true })}
@@ -916,7 +916,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
           </div>
           {props.loadedClips.length > 0 && (
             <div className="mt-1.5">
-              <span className="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Clipes .GLB Carregados</span>
+              <span className="text-[9px] font-semibold text-slate-400 uppercase block mb-1">Clipes .GLB Carregados</span>
               <div className="flex flex-wrap gap-1">
                 {props.loadedClips.map((name, idx) => (
                   <button
@@ -934,7 +934,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
         </div>
 
         <div className="rounded-lg bg-[#090c13] border border-white/10 p-2 flex flex-col gap-1.5">
-          <div className="flex items-center justify-between gap-1 text-[10px]">
+          <div className="flex items-center justify-between gap-1 text-[9px]">
             <span className="font-medium text-slate-200">Pistas NLA</span>
             <button
               type="button"
@@ -960,7 +960,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
                   onChange={() => setTracks((prev) => prev.map((t) => t.id === track.id ? { ...t, visible: !t.visible } : t))}
                   className="w-3 h-3 rounded accent-sky-500"
                 />
-                <span className={`text-[10px] ${track.visible ? 'text-slate-200' : 'text-slate-500'} truncate w-16`}>{track.name}</span>
+                <span className={`text-[9px] ${track.visible ? 'text-slate-200' : 'text-slate-500'} truncate w-16`}>{track.name}</span>
                 <span className="text-[9px] text-slate-500 font-mono w-12 text-right">{stripCount} strip(s)</span>
                 <button
                   type="button"
@@ -984,8 +984,8 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
         <div className="flex items-start gap-2 border-b border-white/10 pb-1 mb-1">
           <Zap className="w-4 h-4 text-sky-400 shrink-0" />
           <div className="min-w-0 flex-1">
-            <h3 className="text-xs font-bold tracking-wide text-white uppercase">VFX Studio</h3>
-            <p className="text-[10px] text-slate-400 mt-0.5">Nodes · Física · Instâncias · Pós-FX</p>
+            <h3 className="text-[9px] font-bold tracking-wide text-white uppercase">VFX Studio</h3>
+            <p className="text-[9px] text-slate-400 mt-0.5">Nodes · Física · Instâncias · Pós-FX</p>
           </div>
         </div>
 
@@ -1009,7 +1009,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
         </div>
 
         <div className="rounded-lg bg-[#090c13] border border-white/10 p-2 flex flex-col gap-1.5">
-          <div className="flex items-center justify-between gap-1 text-[10px]">
+          <div className="flex items-center justify-between gap-1 text-[9px]">
             <span className="font-medium text-slate-200">MoGraph Cloner</span>
             <button
               type="button"
@@ -1051,7 +1051,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             })}
           </div>
           <div className="flex flex-col gap-0.5">
-            <div className="flex items-center justify-between text-[10px]">
+            <div className="flex items-center justify-between text-[9px]">
               <span className="text-slate-400">Quantidade de Clones</span>
               <span className="font-mono text-sky-300">{props.geometryNodes?.cloneCount}</span>
             </div>
@@ -1066,7 +1066,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             />
           </div>
           <div className="flex flex-col gap-0.5">
-            <div className="flex items-center justify-between text-[10px]">
+            <div className="flex items-center justify-between text-[9px]">
               <span className="text-slate-400">Raio / Espaçamento</span>
               <span className="font-mono text-sky-300">{props.geometryNodes?.spacing?.toFixed(1) ?? '1.0'}</span>
             </div>
@@ -1081,7 +1081,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             />
           </div>
           <div className="flex flex-col gap-0.5">
-            <div className="flex items-center justify-between text-[10px]">
+            <div className="flex items-center justify-between text-[9px]">
               <span className="text-slate-400">Força</span>
               <span className="font-mono text-sky-300">{props.geometryNodes?.strength?.toFixed(2) ?? '1.00'}</span>
             </div>
@@ -1096,7 +1096,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             />
           </div>
           <div className="flex flex-col gap-0.5">
-            <div className="flex items-center justify-between text-[10px]">
+            <div className="flex items-center justify-between text-[9px]">
               <span className="text-slate-400">Velocidade</span>
               <span className="font-mono text-sky-300">{props.geometryNodes?.speed?.toFixed(1) ?? '1.0'}x</span>
             </div>
@@ -1113,7 +1113,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
           <button
             type="button"
             onClick={props.onInstantiateCircular6x}
-            className="w-full h-7 px-2 text-[10px] font-semibold rounded-lg bg-sky-400 hover:bg-sky-300 text-slate-950 flex items-center justify-center gap-1 cursor-pointer"
+            className="w-full h-7 px-2 text-[9px] font-semibold rounded-lg bg-sky-400 hover:bg-sky-300 text-slate-950 flex items-center justify-center gap-1 cursor-pointer"
           >
             <Layers className="w-3 h-3" />
             <span>MoGraph Ativo</span>
@@ -1121,7 +1121,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
         </div>
 
         <div className="rounded-lg bg-[#090c13] border border-white/10 p-2 flex flex-col gap-1.5">
-          <div className="flex items-center justify-between gap-1 text-[10px]">
+          <div className="flex items-center justify-between gap-1 text-[9px]">
             <span className="font-medium text-slate-200">Templates Procedurais 3D</span>
           </div>
           <div className="grid grid-cols-2 gap-1">
@@ -1144,7 +1144,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
           <button
             type="button"
             onClick={() => props.onChangeSceneMode?.('instanced')}
-            className="w-full h-7 px-2 text-[10px] font-semibold rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 flex items-center justify-center gap-1 cursor-pointer"
+            className="w-full h-7 px-2 text-[9px] font-semibold rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 flex items-center justify-center gap-1 cursor-pointer"
           >
             <Boxes className="w-3 h-3" />
             <span>Instanciar Array Circular</span>
@@ -1155,13 +1155,13 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
           <button
             type="button"
             onClick={props.onTriggerPhysicsImpulse}
-            className="w-full h-7 px-2 text-[10px] font-semibold rounded-lg bg-sky-400 hover:bg-sky-300 text-slate-950 flex items-center justify-center gap-1 cursor-pointer"
+            className="w-full h-7 px-2 text-[9px] font-semibold rounded-lg bg-sky-400 hover:bg-sky-300 text-slate-950 flex items-center justify-center gap-1 cursor-pointer"
           >
             <Zap className="w-3 h-3" />
             <span>Lançar Impulso Físico</span>
           </button>
           <div className="flex flex-col gap-0.5">
-            <div className="flex items-center justify-between text-[10px]">
+            <div className="flex items-center justify-between text-[9px]">
               <span className="text-slate-400">Instâncias</span>
               <span className="font-mono text-sky-300">{props.instanceCount?.toLocaleString('pt-BR') ?? '2.000'}</span>
             </div>
@@ -1176,7 +1176,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             />
           </div>
           <div className="flex flex-col gap-0.5">
-            <div className="flex items-center justify-between text-[10px]">
+            <div className="flex items-center justify-between text-[9px]">
               <span className="text-slate-400">Turbulência</span>
               <span className="font-mono text-sky-300">{props.turbulence?.toFixed(2) ?? '0.00'}</span>
             </div>
@@ -1191,7 +1191,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             />
           </div>
           <div className="flex flex-col gap-0.5">
-            <div className="flex items-center justify-between text-[10px]">
+            <div className="flex items-center justify-between text-[9px]">
               <span className="text-slate-400">Frequência</span>
               <span className="font-mono text-sky-300">{props.frequency?.toFixed(1) ?? '1.0'}</span>
             </div>
@@ -1218,7 +1218,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
         <button
           type="button"
           onClick={props.onToggleCollapsed}
-          className="h-8 sm:h-9 px-3 sm:px-4 rounded-xl bg-[#0d1118]/95 border border-sky-400/40 text-xs font-semibold text-sky-200 hover:text-white shadow-2xl flex items-center gap-2 whitespace-nowrap cursor-pointer"
+          className="h-8 sm:h-9 px-3 sm:px-4 rounded-xl bg-[#0d1118]/95 border border-sky-400/40 text-[9px] font-semibold text-sky-200 hover:text-white shadow-2xl flex items-center gap-2 whitespace-nowrap cursor-pointer"
         >
           <ChevronUp className="w-3.5 h-3.5 text-sky-400 shrink-0" />
           <span className="truncate">Timeline NLA ({animation.currentFrame}f)</span>
@@ -1230,7 +1230,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
   return (
     <section
       aria-label="Timeline NLA e Editor de Animação Integrada"
-      className="fixed bottom-0 left-[44px] sm:left-[56px] right-0 z-20 bg-[#0b0e14]/97 backdrop-blur-md border-t border-white/12 shadow-2xl flex flex-col select-none"
+      className="relative w-full z-20 bg-[#0b0e14]/97 backdrop-blur-md border-t border-white/12 shadow-2xl flex flex-col select-none"
     >
       <div className="flex-1 overflow-y-auto">
         <div className="border-b border-white/10 bg-[#0f141e]/80 sticky top-0 z-10 px-2 sm:px-2.5">
@@ -1247,7 +1247,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
                   className={`flex-1 shrink-0 h-8 sm:h-9 px-2 sm:px-2.5 rounded-lg border flex items-center justify-center gap-1.5 cursor-pointer transition-colors ${commandTab === tab ? 'bg-sky-500/20 border-sky-400/55 text-sky-200 shadow-sm' : 'bg-[#0c1018] border-transparent text-slate-400 hover:text-white hover:border-white/10'}`}
                 >
                   <Icon className="w-3 h-3 shrink-0" />
-                  <span className="text-[10px] sm:text-xs font-medium whitespace-nowrap">{tabLabel[tab]}</span>
+                  <span className="text-[9px] font-medium whitespace-nowrap">{tabLabel[tab]}</span>
                 </button>
               );
             })}
@@ -1446,7 +1446,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
                     checked={track.visible}
                     className="w-3 h-3 rounded accent-sky-500"
                   />
-                  <span className={`text-[10px] ${track.visible ? 'text-slate-200' : 'text-slate-500'} truncate`}>{track.name}</span>
+                  <span className={`text-[9px] ${track.visible ? 'text-slate-200' : 'text-slate-500'} truncate`}>{track.name}</span>
                 </div>
                 <div className="flex-1 h-10 relative overflow-hidden bg-transparent">
                   {track.strips.map((strip) => {
@@ -1488,7 +1488,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
       </div>
 
       <div className="h-8 border-t border-white/10 bg-[#0f141e] flex items-center justify-between gap-2 px-2 sm:px-2.5 overflow-x-auto no-scrollbar">
-        <div className="flex items-center gap-1 text-[10px]">
+        <div className="flex items-center gap-1 text-[9px]">
           <span className="text-slate-400">Frame:</span>
           <span className="font-mono text-sky-300 tabular-nums">{animation.currentFrame}f</span>
           <span className="text-slate-400">|</span>
@@ -1537,7 +1537,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
         </div>
 
         <div className="flex items-center gap-1">
-          <span className="text-[10px] text-slate-400">FPS:</span>
+          <span className="text-[9px] text-slate-400">FPS:</span>
           {[12, 24, 30, 60].map((fps) => (
             <button
               key={fps}

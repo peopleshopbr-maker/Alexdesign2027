@@ -214,6 +214,8 @@ function deepMergeSettings(
 
 export default function App() {
   const viewportRef = useRef<HTMLDivElement>(null);
+  const bottomDockRef = useRef<HTMLDivElement>(null);
+  const [bottomInset, setBottomInset] = useState(0);
   const threeEngineRef = useRef<ThreeStudioEngine | null>(null);
   const webgpuEngineRef = useRef<NativeWebGPUParticleEngine | null>(null);
 
@@ -368,6 +370,17 @@ export default function App() {
     syncCompact();
     mq.addEventListener('change', syncCompact);
     return () => mq.removeEventListener('change', syncCompact);
+  }, []);
+
+  // Mede a altura real do dock inferior (timeline NLA / BottomDock, expandido ou recolhido)
+  useEffect(() => {
+    const el = bottomDockRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const update = () => setBottomInset(Math.ceil(el.getBoundingClientRect().height));
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
   useEffect(() => {
@@ -1528,8 +1541,7 @@ export default function App() {
           }
         }}
       >
-        {/* Viewport 3D — base absoluta, ocupa toda a área do main, nunca colapsa */}
-        <div ref={viewportRef} className="absolute inset-0 w-full h-full" />
+
 
         {/* Overlay ao arrastar .glb / .gltf / .zip sobre a cena */}
         {viewportDragOver && (
@@ -1584,254 +1596,217 @@ export default function App() {
           onSelectPreset={handleCameraPreset}
         />
 
-        {/* Painel Lateral Esquerdo sobreposto ao viewport: Hub de Comandos (~320px) */}
-        <aside
-          className="absolute left-0 top-0 bottom-0 w-[320px] min-w-[320px] max-w-[340px] h-full overflow-hidden flex flex-col border-r border-white/10 bg-[#0b0e14] z-10 shrink-0"
-        >
-          {/* TIMELINE CENTRAL - Hub único de comandos (Import, PBR, Rig, VFX) */}
-          <AnimationTimelineDock
-            collapsed={timelineCollapsed}
-            onToggleCollapsed={() => setTimelineCollapsed((p) => !p)}
-            animation={settings.animation}
-            loadedClips={metrics.lodTelemetry.loadedClips}
-            isRecording={isRecording}
-            undoCount={undoCount}
-            redoCount={redoCount}
-            onUpdateAnimation={handleUpdateAnimation}
-            onUndo={handleUndo}
-            onRedo={handleRedo}
-            onToggleRecordWebm={handleToggleRecordWebm}
-            onOpenRetargetPicker={() => timelineRetargetInputRef.current?.click()}
-            onNotice={showNotice}
-            onAddNlaStrip={(label, sourceType, actionCycle, clipIndex, startAt) => {
-              const strips = settings.animation.nlaStrips ?? [];
-              const lastEnd = strips.reduce((acc: number, s) => Math.max(acc, s.endFrame), 0);
-              const startFrame = Math.max(1, startAt ?? (lastEnd > 0 ? lastEnd + 1 : settings.animation.frameStart ?? 1));
-              const endFrame = startFrame + 24;
-              const newStrip = {
-                id: `strip_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-                trackId: 'base',
-                label,
-                sourceType,
-                actionCycle,
-                clipIndex,
-                startFrame,
-                endFrame,
-              };
-              handleUpdateAnimation({
-                nlaStrips: [...strips, newStrip],
-                frameEnd: Math.max(settings.animation.frameEnd ?? 60, endFrame),
-                cycleMode: 'full_cycle',
-                enabled: true,
-              });
+        {/* Outliner / Inspetor (painéis flutuantes à direita) */}
+        {/* Outliner da Cena ou Inspetor Universal do Objeto */}
+        {rightPanelMode === 'outliner' ? (
+          <SceneOutlinerPanel
+            items={outlinerItems}
+            selectedUuid={selectedObject?.uuid ?? null}
+            hasSelection={Boolean(selectedObject)}
+            onSelectItem={(uuid) => {
+              threeEngineRef.current?.selectObjectByUuid(uuid);
+              setRightPanelMode('inspector');
             }}
-            // Import & Export
-            lodTelemetry={metrics.lodTelemetry}
-            exportProfile={settings.animation.exportProfile}
-            onChangeExportProfile={(exportProfile) => handleUpdateAnimation({ exportProfile })}
-            onUploadFile={(file) => void handleUploadGltf(file)}
-            onInsertRiggedHumanoid={() => handleInsertRiggedHumanoid(false)}
-            onExportGlb={(profile) => void handleExportSampleGlb(profile)}
-            onExportBlenderZip={(profile) => void handleExportBlenderZip(profile)}
-            exportingGlb={exportingGlb}
-            exportingBlenderZip={exportingBlenderZip}
-            multiClipExport={multiClipExport}
-            onToggleMultiClipExport={() => setMultiClipExport((p) => !p)}
-            transparentPng={transparentPng}
-            onToggleTransparentPng={() => setTransparentPng((p) => !p)}
-            captureResolution={captureResolution}
-            onChangeCaptureResolution={(res: string) => setCaptureResolution(res as ExportCaptureResolution)}
-            turntable360={turntable360}
-            onToggleTurntable360={() => setTurntable360((p) => !p)}
-            onCaptureFrame={(t) => handleCaptureFrame(t)}
-            onExportFramesZip={(step, t) => void handleExportFramesZip(step, t)}
-            onExportSpriteSheetZip={(step, t) => void handleExportSpriteSheetZip(step, t)}
-            exportingFramesLabel={exportingFramesLabel}
-            exportingSpriteSheetLabel={exportingSpriteSheetLabel}
-            // Materials & Camera (PBR Engine)
-            finish={settings.finish}
-            explosion={settings.explosion}
-            speed={settings.speed}
-            turbulence={settings.turbulence}
-            frequency={settings.frequency}
-            viewportShadingMode={settings.viewportShading.mode}
-            onChangeFinish={(finish) => handleUpdateSettings({ finish })}
-            onChangeExplosion={(v) => handleUpdateSettings({ explosion: v })}
-            onChangeSpeed={(v) => handleUpdateSettings({ speed: v })}
-            onChangeTurbulence={(v) => handleUpdateSettings({ turbulence: v })}
-            onChangeFrequency={(v) => handleUpdateSettings({ frequency: v })}
-            onChangeViewportShading={(mode) => handleUpdateSettings({ viewportShading: { ...settings.viewportShading, mode } })}
-            onCameraPreset={handleCameraPreset}
-            onRestoreGltfMaterials={() => {
-              threeEngineRef.current?.restoreGltfOriginalMaterials();
-              showNotice('Materiais originais do modelo restaurados.');
+            onToggleVisibility={(uuid) => {
+              threeEngineRef.current?.toggleObjectVisibilityByUuid(uuid);
             }}
-            loadedModelName={metrics.lodTelemetry.loadedModelName}
-            // Render settings for PBR/VXF
-            postProcessing={settings.postProcessing}
-            lighting={settings.lighting}
-            onUpdateSettings={handleUpdateSettings}
-            // VFX Studio
-            geometryNodes={settings.geometryNodes}
-            onChangeGeometryNodes={(patch) => handleUpdateSettings({ geometryNodes: { ...settings.geometryNodes, ...patch } })}
-            onChangeLightingPreset={(preset) => handleUpdateSettings({ lighting: { ...settings.lighting, preset } })}
-            onChangeEnvIntensity={(v) => handleUpdateSettings({ lighting: { ...settings.lighting, envIntensity: v } })}
-            onChangeEnvRotation={(v) => handleUpdateSettings({ lighting: { ...settings.lighting, envRotationDeg: v } })}
-            onChangeShadowIntensity={(v) => handleUpdateSettings({ lighting: { ...settings.lighting, shadowIntensity: v } })}
-            onChangeExposure={(v) => handleUpdateSettings({ lighting: { ...settings.lighting, exposure: v } })}
-            onChangeBloomStrength={(v) => handleUpdateSettings({ postProcessing: { ...settings.postProcessing, bloomStrength: v } })}
-            onChangeGrainAmount={(v) => handleUpdateSettings({ postProcessing: { ...settings.postProcessing, grainAmount: v } })}
-            onChangeChromaticAmount={(v) => handleUpdateSettings({ postProcessing: { ...settings.postProcessing, chromaticAmount: v } })}
-            onChangeDofEnabled={(v) => handleUpdateSettings({ postProcessing: { ...settings.postProcessing, dofEnabled: v } })}
-            onChangeDofFocus={(v) => handleUpdateSettings({ postProcessing: { ...settings.postProcessing, dofFocus: v } })}
-            onChangePostFxEnabled={(v) => handleUpdateSettings({ postProcessing: { ...settings.postProcessing, enabled: v } })}
-            onChangeInstanceCount={(v) => handleUpdateSettings({ instanceCount: v })}
-            instanceCount={settings.instanceCount}
-            onTriggerPhysicsImpulse={() => threeEngineRef.current?.triggerPhysicsImpulse()}
-            onSelectVfxSubMode={(mode) => {
-              setVfxTab(mode as any);
-              if (mode !== 'postfx') handleUpdateSettings({ sceneMode: mode as SceneMode });
+            onDeleteItem={(uuid) => {
+              const removed = threeEngineRef.current?.deleteObjectByUuid(uuid);
+              if (removed) {
+                showNotice(`Malha removida: ${removed} (Ctrl+Z para desfazer)`);
+              }
             }}
-            onApplyTemplate={(template) => {
-              handleApplyNodeTemplate(template);
-              showNotice('Template procedural aplicado na cena e no personagem.');
-            }}
-            onInstantiateCircular6x={() => {
-              handleInstantiateCircular6x();
-              showNotice('Array Circular (6x Nodes) instanciado (Ctrl+Z para desfazer).');
-            }}
-            onSelectShaderPreset={handleSelectShaderPreset}
-            onResetToPbrFromShader={handleResetToPbrFromShader}
-            onToggleLiveRender={handleToggleLiveRender}
-            liveRenderActive={liveRenderActive}
-            sceneMode={settings.sceneMode}
-            onChangeSceneMode={(mode) => handleUpdateSettings({ sceneMode: mode as SceneMode })}
-            vfxTab={vfxTab}
-            onChangeVfxTab={(tab) => setVfxTab(tab as any)}
+            onSwitchToInspector={() => setRightPanelMode('inspector')}
+            onClose={() => setRightPanelMode('closed')}
           />
+        ) : rightPanelMode === 'inspector' ? (
+          <ObjectPropertiesPanel
+            selected={selectedObject}
+            gizmoMode={settings.sculpt.gizmoMode}
+            settings={settings}
+            onUpdateSettings={handleUpdateSettings}
+            onChangeGizmoMode={(gizmoMode) => handleUpdateSculpt({ gizmoMode })}
+            onUpdateProperty={(patch) => threeEngineRef.current?.updateSelectedObjectProperty(patch)}
+            onApplyMaterialPreset={handleApplyMaterialPreset}
+            onApplyCustomTexture={(slot, file) => void handleApplyCustomTexture(slot, file)}
+            onClearCustomTextures={handleClearCustomTextures}
+            onFocusObject={() => threeEngineRef.current?.focusSelectedObject()}
+            onSnapToGround={handleSnapToGround}
+            onClearSelection={() => threeEngineRef.current?.clearSelection()}
+            onDuplicateObject={handleDuplicateSelected}
+            onDeleteObject={handleDeleteSelected}
+            onOpenOutliner={() => setRightPanelMode('outliner')}
+          />
+        ) : null}
 
-          {/* Outliner da Cena ou Inspetor Universal do Objeto */}
-          {rightPanelMode === 'outliner' ? (
-            <SceneOutlinerPanel
-              items={outlinerItems}
-              selectedUuid={selectedObject?.uuid ?? null}
-              hasSelection={Boolean(selectedObject)}
-              onSelectItem={(uuid) => {
-                threeEngineRef.current?.selectObjectByUuid(uuid);
-                setRightPanelMode('inspector');
-              }}
-              onToggleVisibility={(uuid) => {
-                threeEngineRef.current?.toggleObjectVisibilityByUuid(uuid);
-              }}
-              onDeleteItem={(uuid) => {
-                const removed = threeEngineRef.current?.deleteObjectByUuid(uuid);
-                if (removed) {
-                  showNotice(`Malha removida: ${removed} (Ctrl+Z para desfazer)`);
-                }
-              }}
-              onSwitchToInspector={() => setRightPanelMode('inspector')}
-              onClose={() => setRightPanelMode('closed')}
-            />
-          ) : rightPanelMode === 'inspector' ? (
-            <ObjectPropertiesPanel
-              selected={selectedObject}
-              gizmoMode={settings.sculpt.gizmoMode}
-              settings={settings}
-              onUpdateSettings={handleUpdateSettings}
-              onChangeGizmoMode={(gizmoMode) => handleUpdateSculpt({ gizmoMode })}
-              onUpdateProperty={(patch) => threeEngineRef.current?.updateSelectedObjectProperty(patch)}
-              onApplyMaterialPreset={handleApplyMaterialPreset}
-              onApplyCustomTexture={(slot, file) => void handleApplyCustomTexture(slot, file)}
-              onClearCustomTextures={handleClearCustomTextures}
-              onFocusObject={() => threeEngineRef.current?.focusSelectedObject()}
-              onSnapToGround={handleSnapToGround}
-              onClearSelection={() => threeEngineRef.current?.clearSelection()}
-              onDuplicateObject={handleDuplicateSelected}
-              onDeleteObject={handleDeleteSelected}
-              onOpenOutliner={() => setRightPanelMode('outliner')}
-            />
-          ) : null}
-        </aside>
-
-        {/* Linha Inferior: Timeline NLA no modo Animação, ou Dock de Viewport nos demais */}
-        <div className="absolute bottom-0 left-0 right-0 h-auto z-10">
-          {settings.sceneMode === 'animation' ? (
-            <>
-              <input
-                ref={timelineRetargetInputRef}
-                type="file"
-                accept=".glb,.gltf,.zip"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) void handleRetargetMotionFile(file);
-                  e.target.value = '';
-                }}
-              />
-              <AnimationTimelineDock
-                collapsed={timelineCollapsed}
-                onToggleCollapsed={() => setTimelineCollapsed((p) => !p)}
-                animation={settings.animation}
-                loadedClips={metrics.lodTelemetry.loadedClips}
-                isRecording={isRecording}
-                undoCount={undoCount}
-                redoCount={redoCount}
-                onUpdateAnimation={handleUpdateAnimation}
-                onUndo={handleUndo}
-                onRedo={handleRedo}
-                onToggleRecordWebm={handleToggleRecordWebm}
-                onOpenRetargetPicker={() => timelineRetargetInputRef.current?.click()}
-                onNotice={showNotice}
-                onAddNlaStrip={(label, sourceType, actionCycle, clipIndex, startAt) => {
-                  const strips = settings.animation.nlaStrips ?? [];
-                  const lastEnd = strips.reduce((acc: number, s) => Math.max(acc, s.endFrame), 0);
-                  const startFrame = Math.max(1, startAt ?? (lastEnd > 0 ? lastEnd + 1 : settings.animation.frameStart ?? 1));
-                  const endFrame = startFrame + 24;
-                  const newStrip = {
-                    id: `strip_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-                    trackId: 'base',
-                    label,
-                    sourceType,
-                    actionCycle,
-                    clipIndex,
-                    startFrame,
-                    endFrame,
-                  };
-                  handleUpdateAnimation({
-                    nlaStrips: [...strips, newStrip],
-                    frameEnd: Math.max(settings.animation.frameEnd ?? 60, endFrame),
-                    cycleMode: 'full_cycle',
-                    enabled: true,
-                  });
-                }}
-              />
-            </>
-          ) : (
-            <BottomDock
-              collapsed={dockCollapsed}
-              onToggleCollapsed={() => setDockCollapsed((p) => !p)}
-              settings={settings}
-              onUpdateSettings={handleUpdateSettings}
-              compareMode={compareMode}
-              onCycleCompareMode={handleCycleCompareMode}
-              autoOrbit={autoOrbit}
-              onToggleAutoOrbit={handleToggleAutoOrbit}
-              hasSelection={Boolean(selectedObject)}
+        {/* Linha inferior: hub de comandos + timeline (em fluxo, para o viewport poder reservar a altura real) */}
+        <div
+          ref={bottomDockRef}
+          className="absolute bottom-0 right-0 left-11 sm:left-14 z-10"
+        >
+          <input
+            ref={timelineRetargetInputRef}
+            type="file"
+            accept=".glb,.gltf,.zip"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void handleRetargetMotionFile(file);
+              e.target.value = '';
+            }}
+          />
+          {leftPanelVisible && (
+            <AnimationTimelineDock
+              collapsed={timelineCollapsed}
+              onToggleCollapsed={() => setTimelineCollapsed((p) => !p)}
+              animation={settings.animation}
+              loadedClips={metrics.lodTelemetry.loadedClips}
               isRecording={isRecording}
-              transparentPng={transparentPng}
-              exportingFramesLabel={exportingFramesLabel}
-              onToggleTransparentPng={() => setTransparentPng((p) => !p)}
-              onExportFramesZip={() => void handleExportFramesZip(1, transparentPng)}
-              onToggleRecordWebm={handleToggleRecordWebm}
-              onSnapToGround={handleSnapToGround}
-              onFocusObject={() => threeEngineRef.current?.focusSelectedObject()}
-              onUndo={handleUndo}
-              onRedo={handleRedo}
               undoCount={undoCount}
               redoCount={redoCount}
+              onUpdateAnimation={handleUpdateAnimation}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              onToggleRecordWebm={handleToggleRecordWebm}
+              onOpenRetargetPicker={() => timelineRetargetInputRef.current?.click()}
+              onNotice={showNotice}
+              onAddNlaStrip={(label, sourceType, actionCycle, clipIndex, startAt) => {
+                const strips = settings.animation.nlaStrips ?? [];
+                const lastEnd = strips.reduce((acc: number, s) => Math.max(acc, s.endFrame), 0);
+                const startFrame = Math.max(1, startAt ?? (lastEnd > 0 ? lastEnd + 1 : settings.animation.frameStart ?? 1));
+                const endFrame = startFrame + 24;
+                const newStrip = {
+                  id: `strip_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                  trackId: 'base',
+                  label,
+                  sourceType,
+                  actionCycle,
+                  clipIndex,
+                  startFrame,
+                  endFrame,
+                };
+                handleUpdateAnimation({
+                  nlaStrips: [...strips, newStrip],
+                  frameEnd: Math.max(settings.animation.frameEnd ?? 60, endFrame),
+                  cycleMode: 'full_cycle',
+                  enabled: true,
+                });
+              }}
+              // Import & Export
+              lodTelemetry={metrics.lodTelemetry}
+              exportProfile={settings.animation.exportProfile}
+              onChangeExportProfile={(exportProfile) => handleUpdateAnimation({ exportProfile })}
+              onUploadFile={(file) => void handleUploadGltf(file)}
+              onInsertRiggedHumanoid={() => handleInsertRiggedHumanoid(false)}
+              onExportGlb={(profile) => void handleExportSampleGlb(profile)}
+              onExportBlenderZip={(profile) => void handleExportBlenderZip(profile)}
+              exportingGlb={exportingGlb}
+              exportingBlenderZip={exportingBlenderZip}
+              multiClipExport={multiClipExport}
+              onToggleMultiClipExport={() => setMultiClipExport((p) => !p)}
+              transparentPng={transparentPng}
+              onToggleTransparentPng={() => setTransparentPng((p) => !p)}
+              captureResolution={captureResolution}
+              onChangeCaptureResolution={(res: string) => setCaptureResolution(res as ExportCaptureResolution)}
+              turntable360={turntable360}
+              onToggleTurntable360={() => setTurntable360((p) => !p)}
+              onCaptureFrame={(t) => handleCaptureFrame(t)}
+              onExportFramesZip={(step, t) => void handleExportFramesZip(step, t)}
+              onExportSpriteSheetZip={(step, t) => void handleExportSpriteSheetZip(step, t)}
+              exportingFramesLabel={exportingFramesLabel}
+              exportingSpriteSheetLabel={exportingSpriteSheetLabel}
+              // Materials & Camera (PBR Engine)
+              finish={settings.finish}
+              explosion={settings.explosion}
+              speed={settings.speed}
+              turbulence={settings.turbulence}
+              frequency={settings.frequency}
+              viewportShadingMode={settings.viewportShading.mode}
+              onChangeFinish={(finish) => handleUpdateSettings({ finish })}
+              onChangeExplosion={(v) => handleUpdateSettings({ explosion: v })}
+              onChangeSpeed={(v) => handleUpdateSettings({ speed: v })}
+              onChangeTurbulence={(v) => handleUpdateSettings({ turbulence: v })}
+              onChangeFrequency={(v) => handleUpdateSettings({ frequency: v })}
+              onChangeViewportShading={(mode) => handleUpdateSettings({ viewportShading: { ...settings.viewportShading, mode } })}
+              onCameraPreset={handleCameraPreset}
+              onRestoreGltfMaterials={() => {
+                threeEngineRef.current?.restoreGltfOriginalMaterials();
+                showNotice('Materiais originais do modelo restaurados.');
+              }}
+              loadedModelName={metrics.lodTelemetry.loadedModelName}
+              // Render settings for PBR/VXF
+              postProcessing={settings.postProcessing}
+              lighting={settings.lighting}
+              onUpdateSettings={handleUpdateSettings}
+              // VFX Studio
+              geometryNodes={settings.geometryNodes}
+              onChangeGeometryNodes={(patch) => handleUpdateSettings({ geometryNodes: { ...settings.geometryNodes, ...patch } })}
+              onChangeLightingPreset={(preset) => handleUpdateSettings({ lighting: { ...settings.lighting, preset } })}
+              onChangeEnvIntensity={(v) => handleUpdateSettings({ lighting: { ...settings.lighting, envIntensity: v } })}
+              onChangeEnvRotation={(v) => handleUpdateSettings({ lighting: { ...settings.lighting, envRotationDeg: v } })}
+              onChangeShadowIntensity={(v) => handleUpdateSettings({ lighting: { ...settings.lighting, shadowIntensity: v } })}
+              onChangeExposure={(v) => handleUpdateSettings({ lighting: { ...settings.lighting, exposure: v } })}
+              onChangeBloomStrength={(v) => handleUpdateSettings({ postProcessing: { ...settings.postProcessing, bloomStrength: v } })}
+              onChangeGrainAmount={(v) => handleUpdateSettings({ postProcessing: { ...settings.postProcessing, grainAmount: v } })}
+              onChangeChromaticAmount={(v) => handleUpdateSettings({ postProcessing: { ...settings.postProcessing, chromaticAmount: v } })}
+              onChangeDofEnabled={(v) => handleUpdateSettings({ postProcessing: { ...settings.postProcessing, dofEnabled: v } })}
+              onChangeDofFocus={(v) => handleUpdateSettings({ postProcessing: { ...settings.postProcessing, dofFocus: v } })}
+              onChangePostFxEnabled={(v) => handleUpdateSettings({ postProcessing: { ...settings.postProcessing, enabled: v } })}
+              onChangeInstanceCount={(v) => handleUpdateSettings({ instanceCount: v })}
+              instanceCount={settings.instanceCount}
+              onTriggerPhysicsImpulse={() => threeEngineRef.current?.triggerPhysicsImpulse()}
+              onSelectVfxSubMode={(mode) => {
+                setVfxTab(mode as any);
+                if (mode !== 'postfx') handleUpdateSettings({ sceneMode: mode as SceneMode });
+              }}
+              onApplyTemplate={(template) => {
+                handleApplyNodeTemplate(template);
+                showNotice('Template procedural aplicado na cena e no personagem.');
+              }}
+              onInstantiateCircular6x={() => {
+                handleInstantiateCircular6x();
+                showNotice('Array Circular (6x Nodes) instanciado (Ctrl+Z para desfazer).');
+              }}
+              onSelectShaderPreset={handleSelectShaderPreset}
+              onResetToPbrFromShader={handleResetToPbrFromShader}
+              onToggleLiveRender={handleToggleLiveRender}
+              liveRenderActive={liveRenderActive}
+              sceneMode={settings.sceneMode}
+              onChangeSceneMode={(mode) => handleUpdateSettings({ sceneMode: mode as SceneMode })}
+              vfxTab={vfxTab}
+              onChangeVfxTab={(tab) => setVfxTab(tab as any)}
             />
+
           )}
         </div>
+
+        {/* Barra do viewport (shading, snap, REC…): flutua logo acima do dock */}
+        {settings.sceneMode !== 'animation' && (
+              <BottomDock
+                bottomOffset={bottomInset}
+                collapsed={dockCollapsed}
+                onToggleCollapsed={() => setDockCollapsed((p) => !p)}
+                settings={settings}
+                onUpdateSettings={handleUpdateSettings}
+                compareMode={compareMode}
+                onCycleCompareMode={handleCycleCompareMode}
+                autoOrbit={autoOrbit}
+                onToggleAutoOrbit={handleToggleAutoOrbit}
+                hasSelection={Boolean(selectedObject)}
+                isRecording={isRecording}
+                transparentPng={transparentPng}
+                exportingFramesLabel={exportingFramesLabel}
+                onToggleTransparentPng={() => setTransparentPng((p) => !p)}
+                onExportFramesZip={() => void handleExportFramesZip(1, transparentPng)}
+                onToggleRecordWebm={handleToggleRecordWebm}
+                onSnapToGround={handleSnapToGround}
+                onFocusObject={() => threeEngineRef.current?.focusSelectedObject()}
+                onUndo={handleUndo}
+                onRedo={handleRedo}
+                undoCount={undoCount}
+                redoCount={redoCount}
+              />
+        )}
 
         {/* Notificação discreta */}
         {notice && (

@@ -23,6 +23,8 @@ import type {
 
 interface BottomDockProps {
   collapsed: boolean;
+  /** Altura (px) do dock inferior em fluxo; a barra flutua acima dela */
+  bottomOffset?: number;
   onToggleCollapsed: () => void;
   settings: RenderSettings;
   onUpdateSettings: (patch: Partial<RenderSettings>) => void;
@@ -55,6 +57,7 @@ const SHADING_MODES: Array<{ id: ViewportShadingMode; label: string }> = [
 
 export function BottomDock({
   collapsed,
+  bottomOffset = 0,
   onToggleCollapsed,
   settings,
   onUpdateSettings,
@@ -87,7 +90,8 @@ export function BottomDock({
 
   return (
     <div
-      className={`fixed bottom-2.5 sm:bottom-4 left-12 right-2 lg:left-1/2 lg:right-auto lg:-translate-x-1/2 z-20 lg:max-w-[calc(100vw-6rem)] transition-transform duration-300 ease-out ${
+      style={{ bottom: bottomOffset + 12 }}
+      className={`fixed left-12 right-2 lg:left-1/2 lg:right-auto lg:-translate-x-1/2 z-20 lg:max-w-[calc(100vw-6rem)] transition-transform duration-300 ease-out ${
         collapsed ? 'translate-y-[calc(100%+16px)]' : 'translate-y-0'
       }`}
     >

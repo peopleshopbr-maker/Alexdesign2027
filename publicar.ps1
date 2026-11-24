@@ -1,4 +1,4 @@
-﻿param([string]$Mensagem = "Atualizacao do projeto Alexdesign2027")
+param([string]$Mensagem = "Atualizacao do projeto Alexdesign2027")
 $ErrorActionPreference = "Stop"
 Set-Location "C:\Users\studio alex\OneDrive\Documentos\Alexdesign\alexdesign2027"
 (Get-Content package.json) -replace 'if command -v wasm-pack >/dev/null 2>&1; then bun run build:wasm; fi && vite build', 'vite build' | Set-Content package.json
