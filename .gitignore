@@ -9,3 +9,6 @@ coverage/
 src/wasm
 wasm-core/target
 
+
+.wrangler/
+log-verificacao.txt

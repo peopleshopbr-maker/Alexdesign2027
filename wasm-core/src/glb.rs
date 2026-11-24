@@ -400,6 +400,8 @@ impl AnimationClipType {
         }
     }
 
+    #[allow(dead_code)]
+
     pub fn is_loop(&self) -> bool {
         matches!(
             self,
@@ -1957,6 +1959,8 @@ pub fn build_rigged_animation_glb_for_clip(scene: &SceneData, clip_type: Animati
 
     Ok(glb)
 }
+
+#[allow(dead_code)]
 
 pub fn build_rigged_animation_glb(scene: &SceneData) -> Result<Vec<u8>, String> {
     if scene.bones.is_empty() {
