@@ -1,3 +1,4 @@
+import { CommandPalette } from './components/CommandPalette';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimationTimelineDock } from './components/AnimationTimelineDock';
 import { BottomDock } from './components/BottomDock';
@@ -1659,6 +1660,7 @@ export default function App() {
         lastPointerPosRef.current = { x: e.clientX, y: e.clientY };
       }}
     >
+      <CommandPalette />
       <TopBar
         sceneMode={settings.sceneMode}
         sidePanelOpen={leftPanelVisible && sideUtilityPanel === 'none'}
@@ -2042,3 +2044,5 @@ export default function App() {
     </div>
   );
 }
+
+
