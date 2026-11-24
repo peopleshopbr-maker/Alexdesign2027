@@ -1,18 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AnimationSidebar } from './components/AnimationSidebar';
 import { AnimationTimelineDock } from './components/AnimationTimelineDock';
 import { BottomDock } from './components/BottomDock';
 import { CameraOrientationGizmo } from './components/CameraOrientationGizmo';
-import {
-  GeometryNodesSidebar,
-  type Vfx3DSceneMode,
-  type VfxSubMode,
-} from './components/GeometryNodesSidebar';
-import { GltfImportSidebar } from './components/GltfImportSidebar';
 import { LeftToolRail } from './components/LeftToolRail';
 import { ObjectPropertiesPanel } from './components/ObjectPropertiesPanel';
 import { RadialPieMenu, type PieMenuActionId } from './components/RadialPieMenu';
-import { SceneModeSidebar } from './components/SceneModeSidebar';
 import { SceneOutlinerPanel } from './components/SceneOutlinerPanel';
 import { TopBar } from './components/TopBar';
 import { probeGpuHardware } from './graphics/gpuProbe';
@@ -20,16 +12,13 @@ import { SHADER_PRESETS } from './graphics/shaders';
 import { ThreeStudioEngine } from './graphics/threeStudioEngine';
 import { NativeWebGPUParticleEngine } from './graphics/webgpuParticleEngine';
 import {
-  clearStartupModelFile,
   loadStartupModelFile,
-  saveStartupModelFile,
 } from './utils/startupModelStore';
 import { useSystemStore } from './stores/SystemStore';
 import { downloadBlender53Package } from './services/blenderZipExporter';
 import type {
   AnimationActionCycle,
   AnimationSettings,
-  AutoRigPreset,
   CameraPreset,
   ExportCaptureResolution,
   GeometryNodesSettings,
@@ -49,6 +38,9 @@ import type {
   ViewportCompareMode,
   WeightPaintSettings,
 } from './types/graphics';
+
+type Vfx3DSceneMode = 'nodes' | 'physics' | 'instanced' | 'shader';
+type VfxSubMode = Vfx3DSceneMode | 'postfx';
 
 const isVfxSceneMode = (mode: SceneMode): mode is Vfx3DSceneMode =>
   mode === 'nodes' || mode === 'physics' || mode === 'instanced' || mode === 'shader';
@@ -270,11 +262,11 @@ export default function App() {
   const [pieMenuPos] = useState({ x: 640, y: 360 });
   const lastPointerPosRef = useRef({ x: 640, y: 360 });
 
-  const [nodesMeshCount, setNodesMeshCount] = useState(2);
+  const [, setNodesMeshCount] = useState(2);
   const [undoCount, setUndoCount] = useState(0);
   const [redoCount, setRedoCount] = useState(0);
-  const [jointMarkersActive, setJointMarkersActive] = useState(false);
-  const [jointMarkerSymmetry, setJointMarkerSymmetry] = useState(true);
+  const [, setJointMarkersActive] = useState(false);
+  const [jointMarkerSymmetry] = useState(true);
   const jointMarkerSymmetryRef = useRef(jointMarkerSymmetry);
   jointMarkerSymmetryRef.current = jointMarkerSymmetry;
 
@@ -294,7 +286,7 @@ export default function App() {
   const [exportingSpriteSheetLabel, setExportingSpriteSheetLabel] = useState<string | null>(null);
   const [exportingBlenderZip, setExportingBlenderZip] = useState(false);
   const [exportingGlb, setExportingGlb] = useState(false);
-  const [rigBoneNames, setRigBoneNames] = useState<string[]>([]);
+  const [, setRigBoneNames] = useState<string[]>([]);
   const [rigRevision, setRigRevision] = useState(0);
   const [weightPaint, setWeightPaint] = useState<WeightPaintSettings>(DEFAULT_WEIGHT_PAINT);
   const weightPaintRef = useRef(weightPaint);
@@ -323,18 +315,16 @@ export default function App() {
     showBones: boolean;
   } | null>(null);
 
-  const [glslExpandSignal, setGlslExpandSignal] = useState(0);
-  const [vertexCode, setVertexCode] = useState(SHADER_PRESETS[0].vertexShader);
-  const [fragmentCode, setFragmentCode] = useState(SHADER_PRESETS[0].fragmentShader);
-  const [compileResult, setCompileResult] = useState<ShaderCompileResult | null>(null);
+  const [, setVertexCode] = useState(SHADER_PRESETS[0].vertexShader);
+  const [, setFragmentCode] = useState(SHADER_PRESETS[0].fragmentShader);
+  const [, setCompileResult] = useState<ShaderCompileResult | null>(null);
 
   // Internal hardware probe used silently for automatic GPU acceleration & status icon
   const [hardwareReport, setHardwareReport] = useState<GpuHardwareReport | null>(null);
 
   const [notice, setNotice] = useState<string | null>(null);
   const [viewportDragOver, setViewportDragOver] = useState(false);
-  const [autoRigOnImport, setAutoRigOnImport] = useState(false);
-  const [startupModelName, setStartupModelName] = useState<string | null>(null);
+  const [, setStartupModelName] = useState<string | null>(null);
   const lastUploadedFileRef = useRef<File | null>(null);
   const noticeTimerRef = useRef<number | null>(null);
 
@@ -917,35 +907,11 @@ export default function App() {
     }));
   }, []);
 
-  const handleUpdateGeometryNodes = useCallback((patch: Partial<GeometryNodesSettings>) => {
-    setSettings((prev) => ({
-      ...prev,
-      geometryNodes: { ...prev.geometryNodes, ...patch },
-    }));
-  }, []);
-
   const handleUpdateAnimation = useCallback((patch: Partial<AnimationSettings>) => {
     setSettings((prev) => ({
       ...prev,
       animation: { ...prev.animation, ...patch },
     }));
-  }, []);
-
-  const handleResetAnimation = useCallback(() => {
-    threeEngineRef.current?.resetAnimationTrail();
-    setSettings((prev) => {
-      const cloned = structuredClone(DEFAULT_ANIMATION);
-      return {
-        ...prev,
-        animation: {
-          ...cloned,
-          exportProfile: prev.animation.exportProfile,
-          frameStart: prev.animation.frameStart,
-          frameEnd: prev.animation.frameEnd,
-          poseSource: prev.animation.poseSource,
-        },
-      };
-    });
   }, []);
 
   const handleCameraPreset = useCallback((preset: CameraPreset) => {
@@ -958,23 +924,6 @@ export default function App() {
     setAutoOrbit(next);
     threeEngineRef.current?.setAutoOrbit(next);
   }, []);
-
-  const handleOpenGlslInVfx = useCallback(() => {
-    lastVfx3DModeRef.current = 'shader';
-    setVfxTab('shader');
-    setSideUtilityPanel('none');
-    setLeftPanelOpen(true);
-    setGlslExpandSignal((n) => n + 1);
-    if (isCompactViewport) {
-      setRightPanelMode('closed');
-    }
-    setSettings((prev) => ({
-      ...prev,
-      sceneMode: 'shader',
-      shaderDisabled: false,
-      viewportShading: { ...prev.viewportShading, mode: 'pbr' },
-    }));
-  }, [isCompactViewport]);
 
   const handleCompileGlsl = useCallback(
     (vs: string, fs: string): ShaderCompileResult => {
@@ -1087,7 +1036,7 @@ export default function App() {
       try {
         setJointMarkersActive(false);
         const info = await threeEngineRef.current.loadGltfFile(file, 'gltf', {
-          autoRigIfStatic: autoRigOnImport,
+          autoRigIfStatic: false,
           rigType: 'biped',
         });
         lastUploadedFileRef.current = file;
@@ -1116,112 +1065,8 @@ export default function App() {
         showNotice(err instanceof Error ? err.message : 'Erro ao importar modelo 3D.');
       }
     },
-    [showNotice, autoRigOnImport]
-  );
-
-  const handlePinStartupModel = useCallback(async () => {
-    const engine = threeEngineRef.current;
-    const activeName = metricsRef.current.lodTelemetry.loadedModelName;
-    if (!engine || !activeName || !engine.hasLoadedGltfModel()) {
-      showNotice('Importe ou insira um modelo antes de fixá-lo como inicial.');
-      return;
-    }
-    try {
-      let fileToSave = lastUploadedFileRef.current;
-      if (!fileToSave || fileToSave.name !== activeName) {
-        const blob = await engine.exportSampleGlb(settingsRef.current.animation.exportProfile);
-        fileToSave = new File([blob], activeName, { type: 'model/gltf-binary' });
-        lastUploadedFileRef.current = fileToSave;
-      }
-      await saveStartupModelFile(fileToSave, autoRigOnImport);
-      setStartupModelName(activeName);
-      showNotice(`${activeName} fixado! Abrirá automaticamente ao iniciar o site.`);
-    } catch {
-      showNotice('Não foi possível salvar este modelo como inicial no navegador.');
-    }
-  }, [autoRigOnImport, showNotice]);
-
-  const handleClearStartupModel = useCallback(async () => {
-    await clearStartupModelFile();
-    setStartupModelName(null);
-    showNotice('Modelo inicial removido. Próxima abertura usará o exemplo padrão.');
-  }, [showNotice]);
-
-  const handleAutoRigLoadedGltf = useCallback(
-    (rigType: AutoRigPreset = 'biped') => {
-      const res = threeEngineRef.current?.autoRigLoadedGltf(rigType);
-      if (!res) {
-        showNotice('Importe ou insira um modelo 3D antes de aplicar Auto-Rigging.');
-        return;
-      }
-      setJointMarkersActive(false);
-      setSettings((prev) => ({
-        ...prev,
-        animation: {
-          ...prev.animation,
-          poseSource: 'procedural',
-          showBones: true,
-          enabled: true,
-          playing: false,
-          cycleMode: 'full_cycle',
-        },
-      }));
-      setRigRevision((r) => r + 1);
-      showNotice(
-        `Auto-Rigging concluído (${res.boneCount} ossos)! Use os comandos em Animação 3D.`
-      );
-    },
     [showNotice]
   );
-
-  const handleStartJointMarkers = useCallback(() => {
-    const ok = threeEngineRef.current?.startJointMarkerRigging();
-    if (!ok) {
-      showNotice('Importe ou insira um modelo 3D antes de posicionar marcadores.');
-      return;
-    }
-    threeEngineRef.current?.setJointMarkerSymmetry(jointMarkerSymmetryRef.current);
-    setJointMarkersActive(true);
-    setSettings((prev) => ({
-      ...prev,
-      sculpt: { ...prev.sculpt, gizmoMode: 'translate' },
-    }));
-    showNotice('Arraste as esferas (juntas) com o Gizmo 3D e clique em Gerar Skeleton.');
-  }, [showNotice]);
-
-  const handleCommitJointMarkers = useCallback(() => {
-    const res = threeEngineRef.current?.commitJointMarkerRigging();
-    setJointMarkersActive(false);
-    if (!res) {
-      showNotice('Não foi possível gerar o esqueleto pelos marcadores.');
-      return;
-    }
-    setSettings((prev) => ({
-      ...prev,
-      animation: {
-        ...prev.animation,
-        poseSource: 'procedural',
-        showBones: true,
-        enabled: true,
-        playing: false,
-        cycleMode: 'full_cycle',
-      },
-    }));
-    setRigRevision((r) => r + 1);
-    showNotice(`Skeleton gerado pelos marcadores (${res.boneCount} ossos)!`);
-  }, [showNotice]);
-
-  const handleCancelJointMarkers = useCallback(() => {
-    threeEngineRef.current?.cancelJointMarkerRigging();
-    setJointMarkersActive(false);
-    showNotice('Posicionamento de marcadores cancelado.');
-  }, [showNotice]);
-
-  const handleToggleJointMarkerSymmetry = useCallback(() => {
-    const next = !jointMarkerSymmetryRef.current;
-    setJointMarkerSymmetry(next);
-    threeEngineRef.current?.setJointMarkerSymmetry(next);
-  }, []);
 
   const handleInsertRiggedHumanoid = useCallback(
     (goToAnimation = false) => {
@@ -1452,22 +1297,6 @@ export default function App() {
     );
   }, [showNotice]);
 
-  const handleUpdateWeightPaint = useCallback(
-    (patch: Partial<WeightPaintSettings>) => {
-      const current = weightPaintRef.current;
-      const next = { ...current, ...patch };
-      const ok = threeEngineRef.current?.setWeightPaintSettings(next) ?? false;
-      if (patch.active === true && !ok) {
-        threeEngineRef.current?.setWeightPaintSettings({ ...next, active: false });
-        setWeightPaint({ ...next, active: false });
-        showNotice('Carregue ou aplique Auto-Rig em uma malha SkinnedMesh antes de ativar o Heatmap.');
-        return;
-      }
-      setWeightPaint(next);
-    },
-    [showNotice]
-  );
-
   const handleRetargetMotionFile = useCallback(
     async (file: File) => {
       if (!threeEngineRef.current) return;
@@ -1574,30 +1403,6 @@ export default function App() {
       }
     },
     [sideUtilityPanel, settings.sceneMode, vfxTab, isCompactViewport, handleUpdateSettings]
-  );
-
-  const handleSelectVfxSubMode = useCallback(
-    (subMode: VfxSubMode) => {
-      setVfxTab(subMode);
-      setSideUtilityPanel('none');
-      setLeftPanelOpen(true);
-      if (isCompactViewport) {
-        setRightPanelMode('closed');
-      }
-      if (subMode !== 'postfx') {
-        lastVfx3DModeRef.current = subMode;
-        handleUpdateSettings({ sceneMode: subMode });
-      }
-    },
-    [isCompactViewport, handleUpdateSettings]
-  );
-
-  const handleSelectBackgroundVfxLayer = useCallback(
-    (layer: Vfx3DSceneMode) => {
-      lastVfx3DModeRef.current = layer;
-      handleUpdateSettings({ sceneMode: layer });
-    },
-    [handleUpdateSettings]
   );
 
   const handleToggleSideUtility = useCallback(
@@ -1779,178 +1584,127 @@ export default function App() {
           onSelectPreset={handleCameraPreset}
         />
 
-        {/* Painel lateral contextual recolhível */}
-        {leftPanelVisible &&
-          (sideUtilityPanel !== 'none' ? (
-            <SceneModeSidebar
-              settings={settings}
-              utilityPanel={sideUtilityPanel}
-              onUpdateSettings={handleUpdateSettings}
-              onCameraPreset={handleCameraPreset}
-              onTriggerPhysicsImpulse={() => threeEngineRef.current?.triggerPhysicsImpulse()}
-              onOpenGlslEditor={handleOpenGlslInVfx}
-              onClose={() => {
-                setSideUtilityPanel('none');
-                setLeftPanelOpen(false);
-              }}
-            />
-          ) : settings.sceneMode === 'gltf' ? (
-            <GltfImportSidebar
-              lodTelemetry={metrics.lodTelemetry}
-              exportProfile={settings.animation.exportProfile}
-              startupModelName={startupModelName}
-              transparentPng={transparentPng}
-              captureResolution={captureResolution}
-              turntable360={turntable360}
-              multiClipExport={multiClipExport}
-              exportingFramesLabel={exportingFramesLabel}
-              exportingSpriteSheetLabel={exportingSpriteSheetLabel}
-              exportingBlenderZip={exportingBlenderZip}
-              exportingGlb={exportingGlb}
-              onChangeExportProfile={(exportProfile) => handleUpdateAnimation({ exportProfile })}
-              onChangeCaptureResolution={setCaptureResolution}
-              onToggleTurntable360={() => setTurntable360((p) => !p)}
-              onToggleMultiClipExport={() => setMultiClipExport((p) => !p)}
-              onUploadFile={(file) => void handleUploadGltf(file)}
-              onInsertRiggedHumanoid={() => handleInsertRiggedHumanoid(false)}
-              onGoToAnimation={() => setSettings((prev) => ({ ...prev, sceneMode: 'animation' }))}
-              onExportGlb={(profile) => void handleExportSampleGlb(profile)}
-              onExportBlenderZip={(profile) => void handleExportBlenderZip(profile)}
-              onToggleTransparentPng={() => setTransparentPng((p) => !p)}
-              onCaptureFrame={(t) => handleCaptureFrame(t)}
-              onExportFramesZip={(step, t) => void handleExportFramesZip(step, t)}
-              onExportSpriteSheetZip={(step, t) => void handleExportSpriteSheetZip(step, t)}
-              onPinStartupModel={() => void handlePinStartupModel()}
-              onClearStartupModel={() => void handleClearStartupModel()}
-              onResetLodAssembly={() => {
-                setJointMarkersActive(false);
-                threeEngineRef.current?.resetToProceduralLodAssembly();
-                showNotice('Cena restaurada para o exemplo Multi-LOD padrão.');
-              }}
-              onClose={() => setLeftPanelOpen(false)}
-            />
-          ) : isVfxSceneMode(settings.sceneMode) || vfxTab === 'postfx' ? (
-            <GeometryNodesSidebar
-              activeTab={isVfxSceneMode(settings.sceneMode) || vfxTab === 'postfx' ? vfxTab : 'nodes'}
-              sceneMode={settings.sceneMode}
-              nodes={settings.geometryNodes}
-              settings={settings}
-              meshCount={nodesMeshCount}
-              loadedModelName={metrics.lodTelemetry.loadedModelName}
-              vertexCode={vertexCode}
-              fragmentCode={fragmentCode}
-              onVertexChange={setVertexCode}
-              onFragmentChange={setFragmentCode}
-              onCompileGlsl={handleCompileGlsl}
-              compileResult={compileResult}
-              shaderEffectActive={!settings.shaderDisabled}
-              liveRenderActive={liveRenderActive}
-              glslExpandSignal={glslExpandSignal}
-              onSelectVfxSubMode={handleSelectVfxSubMode}
-              onSelectBackgroundVfxLayer={handleSelectBackgroundVfxLayer}
-              onUpdateNodes={handleUpdateGeometryNodes}
-              onUpdateSettings={handleUpdateSettings}
-              onTriggerPhysicsImpulse={() => threeEngineRef.current?.triggerPhysicsImpulse()}
-              onApplyTemplate={handleApplyNodeTemplate}
-              onInstantiateCircular6x={handleInstantiateCircular6x}
-              onRestoreGltfMaterials={() => {
-                threeEngineRef.current?.restoreGltfOriginalMaterials();
-                showNotice('Materiais originais do modelo restaurados.');
-              }}
-              onSelectShaderPreset={handleSelectShaderPreset}
-              onResetToPbrFromShader={handleResetToPbrFromShader}
-              onToggleLiveRender={handleToggleLiveRender}
-              onInsertRiggedHumanoid={() => handleInsertRiggedHumanoid(false)}
-              onImportModelFile={(file) => void handleUploadGltf(file)}
-              onClose={() => {
-                setLeftPanelOpen(false);
-                if (vfxTab === 'postfx') {
-                  setVfxTab(lastVfx3DModeRef.current);
-                }
-              }}
-            />
-          ) : settings.sceneMode === 'animation' ? (
-            <AnimationSidebar
-              animation={settings.animation}
-              loadedModelName={metrics.lodTelemetry.loadedModelName}
-              loadedClips={metrics.lodTelemetry.loadedClips}
-              boneCount={metrics.lodTelemetry.boneCount}
-              rigBoneNames={rigBoneNames}
-              weightPaint={weightPaint}
-              onUpdateWeightPaint={handleUpdateWeightPaint}
-              onRetargetMotionFile={(file) => void handleRetargetMotionFile(file)}
-              autoRigOnImport={autoRigOnImport}
-              onToggleAutoRigOnImport={() => setAutoRigOnImport((p) => !p)}
-              jointMarkersActive={jointMarkersActive}
-              jointMarkerSymmetry={jointMarkerSymmetry}
-              onAutoRigLoaded={(rigType) => handleAutoRigLoadedGltf(rigType)}
-              onStartJointMarkers={handleStartJointMarkers}
-              onCommitJointMarkers={handleCommitJointMarkers}
-              onCancelJointMarkers={handleCancelJointMarkers}
-              onToggleJointMarkerSymmetry={handleToggleJointMarkerSymmetry}
-              onExportGlb={(profile) => void handleExportSampleGlb(profile)}
-              onExportBlenderZip={(profile) => void handleExportBlenderZip(profile)}
-              multiClipExport={multiClipExport}
-              onToggleMultiClipExport={() => setMultiClipExport((p) => !p)}
-              exportingBlenderZip={exportingBlenderZip}
-              exportingGlb={exportingGlb}
-              exportingFramesLabel={exportingFramesLabel}
-              exportingSpriteSheetLabel={exportingSpriteSheetLabel}
-              onCaptureFrame={(t) => handleCaptureFrame(t)}
-              onExportFramesZip={(step, t) => void handleExportFramesZip(step, t)}
-              onExportSpriteSheetZip={(step, t) => void handleExportSpriteSheetZip(step, t)}
-              onInsertRiggedHumanoid={() => handleInsertRiggedHumanoid(false)}
-              onUpdateAnimation={handleUpdateAnimation}
-              onAddNlaStrip={(label, sourceType, actionCycle, clipIndex, startAt) => {
-                const strips = settings.animation.nlaStrips ?? [];
-                const lastEnd = strips.reduce((acc: number, s) => Math.max(acc, s.endFrame), 0);
-                const startFrame = Math.max(1, startAt ?? (lastEnd > 0 ? lastEnd + 1 : settings.animation.frameStart ?? 1));
-                const endFrame = startFrame + 24;
-                const newStrip = {
-                  id: `strip_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-                  trackId: 'base',
-                  label,
-                  sourceType,
-                  actionCycle,
-                  clipIndex,
-                  startFrame,
-                  endFrame,
-                };
-                handleUpdateAnimation({
-                  nlaStrips: [...strips, newStrip],
-                  frameEnd: Math.max(settings.animation.frameEnd ?? 60, endFrame),
-                  cycleMode: 'full_cycle',
-                  enabled: true,
-                });
-              }}
-              onResetAnimation={handleResetAnimation}
-              timelineOpen={!timelineCollapsed}
-              onClose={() => setLeftPanelOpen(false)}
-            />
-          ) : (
-            <SceneModeSidebar
-              settings={settings}
-              utilityPanel="none"
-              loadedModelName={metrics.lodTelemetry.loadedModelName}
-              vertexCode={vertexCode}
-              fragmentCode={fragmentCode}
-              liveRenderActive={liveRenderActive}
-              onSelectShaderPreset={handleSelectShaderPreset}
-              onResetToPbrFromShader={handleResetToPbrFromShader}
-              onToggleLiveRender={handleToggleLiveRender}
-              onInsertRiggedHumanoid={() => handleInsertRiggedHumanoid(false)}
-              onImportModelFile={(file) => void handleUploadGltf(file)}
-              onRestoreGltfMaterials={() => {
-                threeEngineRef.current?.restoreGltfOriginalMaterials();
-                showNotice('Materiais originais do GLB restaurados.');
-              }}
-              onUpdateSettings={handleUpdateSettings}
-              onCameraPreset={handleCameraPreset}
-              onTriggerPhysicsImpulse={() => threeEngineRef.current?.triggerPhysicsImpulse()}
-              onOpenGlslEditor={handleOpenGlslInVfx}
-              onClose={() => setLeftPanelOpen(false)}
-            />
-          ))}
+        {/* TIMELINE CENTRAL - Hub único de comandos (Import, PBR, Rig, VFX) */}
+        <AnimationTimelineDock
+          collapsed={timelineCollapsed}
+          onToggleCollapsed={() => setTimelineCollapsed((p) => !p)}
+          animation={settings.animation}
+          loadedClips={metrics.lodTelemetry.loadedClips}
+          isRecording={isRecording}
+          undoCount={undoCount}
+          redoCount={redoCount}
+          onUpdateAnimation={handleUpdateAnimation}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          onToggleRecordWebm={handleToggleRecordWebm}
+          onOpenRetargetPicker={() => timelineRetargetInputRef.current?.click()}
+          onNotice={showNotice}
+          onAddNlaStrip={(label, sourceType, actionCycle, clipIndex, startAt) => {
+            const strips = settings.animation.nlaStrips ?? [];
+            const lastEnd = strips.reduce((acc: number, s) => Math.max(acc, s.endFrame), 0);
+            const startFrame = Math.max(1, startAt ?? (lastEnd > 0 ? lastEnd + 1 : settings.animation.frameStart ?? 1));
+            const endFrame = startFrame + 24;
+            const newStrip = {
+              id: `strip_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+              trackId: 'base',
+              label,
+              sourceType,
+              actionCycle,
+              clipIndex,
+              startFrame,
+              endFrame,
+            };
+            handleUpdateAnimation({
+              nlaStrips: [...strips, newStrip],
+              frameEnd: Math.max(settings.animation.frameEnd ?? 60, endFrame),
+              cycleMode: 'full_cycle',
+              enabled: true,
+            });
+          }}
+          // Import & Export
+          lodTelemetry={metrics.lodTelemetry}
+          exportProfile={settings.animation.exportProfile}
+          onChangeExportProfile={(exportProfile) => handleUpdateAnimation({ exportProfile })}
+          onUploadFile={(file) => void handleUploadGltf(file)}
+          onInsertRiggedHumanoid={() => handleInsertRiggedHumanoid(false)}
+          onExportGlb={(profile) => void handleExportSampleGlb(profile)}
+          onExportBlenderZip={(profile) => void handleExportBlenderZip(profile)}
+          exportingGlb={exportingGlb}
+          exportingBlenderZip={exportingBlenderZip}
+          multiClipExport={multiClipExport}
+          onToggleMultiClipExport={() => setMultiClipExport((p) => !p)}
+          transparentPng={transparentPng}
+          onToggleTransparentPng={() => setTransparentPng((p) => !p)}
+          captureResolution={captureResolution}
+          onChangeCaptureResolution={(res: string) => setCaptureResolution(res as ExportCaptureResolution)}
+          turntable360={turntable360}
+          onToggleTurntable360={() => setTurntable360((p) => !p)}
+          onCaptureFrame={(t) => handleCaptureFrame(t)}
+          onExportFramesZip={(step, t) => void handleExportFramesZip(step, t)}
+          onExportSpriteSheetZip={(step, t) => void handleExportSpriteSheetZip(step, t)}
+          exportingFramesLabel={exportingFramesLabel}
+          exportingSpriteSheetLabel={exportingSpriteSheetLabel}
+          // Materials & Camera (PBR Engine)
+          finish={settings.finish}
+          explosion={settings.explosion}
+          speed={settings.speed}
+          turbulence={settings.turbulence}
+          frequency={settings.frequency}
+          viewportShadingMode={settings.viewportShading.mode}
+          onChangeFinish={(finish) => handleUpdateSettings({ finish })}
+          onChangeExplosion={(v) => handleUpdateSettings({ explosion: v })}
+          onChangeSpeed={(v) => handleUpdateSettings({ speed: v })}
+          onChangeTurbulence={(v) => handleUpdateSettings({ turbulence: v })}
+          onChangeFrequency={(v) => handleUpdateSettings({ frequency: v })}
+          onChangeViewportShading={(mode) => handleUpdateSettings({ viewportShading: { ...settings.viewportShading, mode } })}
+          onCameraPreset={handleCameraPreset}
+          onRestoreGltfMaterials={() => {
+            threeEngineRef.current?.restoreGltfOriginalMaterials();
+            showNotice('Materiais originais do modelo restaurados.');
+          }}
+          loadedModelName={metrics.lodTelemetry.loadedModelName}
+          // Render settings for PBR/VXF
+          postProcessing={settings.postProcessing}
+          lighting={settings.lighting}
+          onUpdateSettings={handleUpdateSettings}
+          // VFX Studio
+          geometryNodes={settings.geometryNodes}
+          onChangeGeometryNodes={(patch) => handleUpdateSettings({ geometryNodes: { ...settings.geometryNodes, ...patch } })}
+          onChangeLightingPreset={(preset) => handleUpdateSettings({ lighting: { ...settings.lighting, preset } })}
+          onChangeEnvIntensity={(v) => handleUpdateSettings({ lighting: { ...settings.lighting, envIntensity: v } })}
+          onChangeEnvRotation={(v) => handleUpdateSettings({ lighting: { ...settings.lighting, envRotationDeg: v } })}
+          onChangeShadowIntensity={(v) => handleUpdateSettings({ lighting: { ...settings.lighting, shadowIntensity: v } })}
+          onChangeExposure={(v) => handleUpdateSettings({ lighting: { ...settings.lighting, exposure: v } })}
+          onChangeBloomStrength={(v) => handleUpdateSettings({ postProcessing: { ...settings.postProcessing, bloomStrength: v } })}
+          onChangeGrainAmount={(v) => handleUpdateSettings({ postProcessing: { ...settings.postProcessing, grainAmount: v } })}
+          onChangeChromaticAmount={(v) => handleUpdateSettings({ postProcessing: { ...settings.postProcessing, chromaticAmount: v } })}
+          onChangeDofEnabled={(v) => handleUpdateSettings({ postProcessing: { ...settings.postProcessing, dofEnabled: v } })}
+          onChangeDofFocus={(v) => handleUpdateSettings({ postProcessing: { ...settings.postProcessing, dofFocus: v } })}
+          onChangePostFxEnabled={(v) => handleUpdateSettings({ postProcessing: { ...settings.postProcessing, enabled: v } })}
+          onChangeInstanceCount={(v) => handleUpdateSettings({ instanceCount: v })}
+          instanceCount={settings.instanceCount}
+          onTriggerPhysicsImpulse={() => threeEngineRef.current?.triggerPhysicsImpulse()}
+          onSelectVfxSubMode={(mode) => {
+            setVfxTab(mode as any);
+            if (mode !== 'postfx') handleUpdateSettings({ sceneMode: mode as SceneMode });
+          }}
+          onApplyTemplate={(template) => {
+            handleApplyNodeTemplate(template);
+            showNotice('Template procedural aplicado na cena e no personagem.');
+          }}
+          onInstantiateCircular6x={() => {
+            handleInstantiateCircular6x();
+            showNotice('Array Circular (6x Nodes) instanciado (Ctrl+Z para desfazer).');
+          }}
+          onSelectShaderPreset={handleSelectShaderPreset}
+          onResetToPbrFromShader={handleResetToPbrFromShader}
+          onToggleLiveRender={handleToggleLiveRender}
+          liveRenderActive={liveRenderActive}
+          sceneMode={settings.sceneMode}
+          onChangeSceneMode={(mode) => handleUpdateSettings({ sceneMode: mode as SceneMode })}
+          vfxTab={vfxTab}
+          onChangeVfxTab={(tab) => setVfxTab(tab as any)}
+        />
 
         {/* Painel Direito: Outliner da Cena ou Inspetor Universal do Objeto */}
         {rightPanelMode === 'outliner' ? (
