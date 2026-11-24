@@ -745,7 +745,7 @@ export default function App() {
   // Use native WebGPU WGSL Compute engine when WebGPU + Instanced Particle Field is active (unless a custom GLB model is in the scene)
   const useNativeWebGPU =
     settings.backend === 'webgpu' &&
-    settings.sceneMode === 'instanced' &&
+    false && settings.sceneMode === 'instanced' &&
     webgpuSupported &&
     !metrics.lodTelemetry.loadedModelName;
 
@@ -2044,6 +2044,8 @@ export default function App() {
     </div>
   );
 }
+
+
 
 
 
