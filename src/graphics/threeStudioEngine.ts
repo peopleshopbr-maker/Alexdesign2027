@@ -86,6 +86,24 @@ import { ResourceTracker, globalResourceTracker } from './ResourceTracker';
 
 type SceneUndoCommand =
   | {
+      kind: 'hero-swap';
+      label: string;
+      prevRoot: THREE.Object3D | null;
+      prevBasePos: THREE.Vector3;
+      prevBaseRot: THREE.Euler;
+      prevBaseScale: THREE.Vector3;
+      prevClips: THREE.AnimationClip[];
+      prevWasAutoRigged: boolean;
+      prevDisposables: Array<{ dispose: () => void }>;
+      nextRoot: THREE.Object3D | null;
+      nextBasePos: THREE.Vector3;
+      nextBaseRot: THREE.Euler;
+      nextBaseScale: THREE.Vector3;
+      nextClips: THREE.AnimationClip[];
+      nextWasAutoRigged: boolean;
+      nextDisposables: Array<{ dispose: () => void }>;
+    }
+  | {
       kind: 'transform';
       label: string;
       object: THREE.Object3D;
@@ -668,6 +686,8 @@ export class ThreeStudioEngine {
   private frameId = 0;
   private disposed = false;
   private isExportingSequence = false;
+  private exportSequenceCancelRequested = false;
+  private gltfExportBinaryOverride: boolean | null = null;
   private clock = new THREE.Clock();
   private elapsed = 0;
   private currentExplosion = 0;
@@ -2038,6 +2058,46 @@ export class ThreeStudioEngine {
     this.onSculptStateChange?.(this.sculptMeshes.length, geomCount);
   }
 
+  /**
+   * Captura o estado atual do modelo hero (GLB importado/humanoide) para um
+   * comando de undo do tipo 'hero-swap'. Chame ANTES de instalar o novo root.
+   */
+  private captureHeroSnapshot(): Extract<SceneUndoCommand, { kind: 'hero-swap' }> {
+    return {
+      kind: 'hero-swap',
+      label: 'Trocar modelo',
+      prevRoot: this.loadedGltfRoot,
+      prevBasePos: this.gltfBasePos.clone(),
+      prevBaseRot: this.gltfBaseRot.clone(),
+      prevBaseScale: this.gltfBaseScale.clone(),
+      prevClips: [...this.gltfClips],
+      prevWasAutoRigged: this.gltfIsAutoRigged,
+      // gltfDisposables é esvaziado por clearLoadedGltf — pegamos a lista atual
+      prevDisposables: this.gltfDisposables,
+      nextRoot: null,
+      nextBasePos: new THREE.Vector3(),
+      nextBaseRot: new THREE.Euler(),
+      nextBaseScale: new THREE.Vector3(1, 1, 1),
+      nextClips: [],
+      nextWasAutoRigged: false,
+      nextDisposables: [],
+    };
+  }
+
+  /** Completa o snapshot com os dados do novo modelo recém-instalado. */
+  private completeHeroSnapshot(
+    snap: Extract<SceneUndoCommand, { kind: 'hero-swap' }>
+  ): void {
+    snap.nextRoot = this.loadedGltfRoot;
+    snap.nextBasePos = this.gltfBasePos.clone();
+    snap.nextBaseRot = this.gltfBaseRot.clone();
+    snap.nextBaseScale = this.gltfBaseScale.clone();
+    snap.nextClips = [...this.gltfClips];
+    snap.nextWasAutoRigged = this.gltfIsAutoRigged;
+    snap.nextDisposables = this.gltfDisposables;
+    snap.label = snap.nextRoot?.name ? `Trocar modelo: ${snap.nextRoot.name}` : 'Trocar modelo';
+  }
+
   private pushSceneUndo(cmd: SceneUndoCommand): void {
     this.sceneUndoStack.push(cmd);
     if (this.sceneUndoStack.length > 40) {
@@ -2048,11 +2108,99 @@ export class ThreeStudioEngine {
     this.notifySculptState();
   }
 
+  /**
+   * Reaplica um lado do snapshot hero-swap: remove o modelo atual (sem
+   * descartar seus disposables — eles ficam no comando do lado oposto) e
+   * instala o modelo restaurado, com base transforms, clipes e auto-rig.
+   */
+  private restoreHeroSnapshot(
+    restored: {
+      root: THREE.Object3D | null;
+      basePos: THREE.Vector3;
+      baseRot: THREE.Euler;
+      baseScale: THREE.Vector3;
+      clips: THREE.AnimationClip[];
+      wasAutoRigged: boolean;
+      disposables: Array<{ dispose: () => void }>;
+    },
+    cmd: Extract<SceneUndoCommand, { kind: 'hero-swap' }>
+  ): void {
+    // Desmonta o modelo atual SEM destruir seus recursos (pertencem ao outro lado)
+    this.cancelJointMarkerRigging();
+    this.clearPropSocket();
+    if (this.gltfSkeletonHelper) {
+      this.activeHeroGltfGroup.remove(this.gltfSkeletonHelper);
+      this.gltfSkeletonHelper.dispose();
+      this.gltfSkeletonHelper = null;
+    }
+    this.gltfRigMap = null;
+    if (this.gltfMixer) {
+      this.gltfMixer.stopAllAction();
+      if (this.loadedGltfRoot) {
+        this.gltfMixer.uncacheRoot(this.loadedGltfRoot);
+      }
+      this.gltfMixer = null;
+    }
+    this.gltfActiveAction = null;
+    this.gltfClips = [];
+    this.gltfActiveClipIndex = 0;
+    if (this.loadedGltfRoot) {
+      disableWeightHeatmapOnRoot(this.loadedGltfRoot);
+      this.activeHeroGltfGroup.remove(this.loadedGltfRoot);
+      this.loadedGltfRoot = null;
+    }
+    // não toca em gltfDisposables aqui — quem os possui é o comando
+
+    if (!restored.root) return;
+
+    // Reinstala o modelo restaurado
+    this.gltfBasePos.copy(restored.basePos);
+    this.gltfBaseRot.copy(restored.baseRot);
+    this.gltfBaseScale.copy(restored.baseScale);
+    this.loadedGltfRoot = restored.root;
+    this.loadedGltfRoot.position.copy(this.gltfBasePos);
+    this.loadedGltfRoot.rotation.copy(this.gltfBaseRot);
+    this.loadedGltfRoot.scale.copy(this.gltfBaseScale);
+    this.activeHeroGltfGroup.add(this.loadedGltfRoot);
+    this.loadedGltfRoot.updateMatrixWorld(true);
+    this.gltfClips = restored.clips;
+    this.gltfIsAutoRigged = restored.wasAutoRigged;
+    this.gltfDisposables = restored.disposables;
+
+    if (this.gltfClips.length > 0) {
+      this.gltfMixer = new THREE.AnimationMixer(this.loadedGltfRoot);
+      this.selectGltfClip(this.settings.animation.activeClipIndex ?? 0);
+    }
+    if (restored.wasAutoRigged) {
+      this.gltfRigMap = captureSkeletonMap(this.loadedGltfRoot);
+    }
+
+    void cmd;
+    this.notifyUndoRedo();
+    this.notifySculptState();
+    this.notifyOutliner();
+  }
+
   public undoScene(): { ok: boolean; label: string } {
     const cmd = this.sceneUndoStack.pop();
     if (!cmd) return { ok: false, label: '' };
 
-    if (cmd.kind === 'transform') {
+    if (cmd.kind === 'hero-swap') {
+      // Restaura o modelo anterior e troca as listas de disposables/clips
+      const restored = {
+        root: cmd.prevRoot,
+        basePos: cmd.prevBasePos,
+        baseRot: cmd.prevBaseRot,
+        baseScale: cmd.prevBaseScale,
+        clips: cmd.prevClips,
+        wasAutoRigged: cmd.prevWasAutoRigged,
+        disposables: cmd.prevDisposables,
+      };
+      this.restoreHeroSnapshot(restored, cmd);
+      if (restored.root && (restored.root as unknown as { isMesh?: boolean }).isMesh) {
+        this.selectAnyMesh(restored.root as THREE.Mesh);
+      }
+    } else if (cmd.kind === 'transform') {
       cmd.object.position.copy(cmd.prevPos);
       cmd.object.quaternion.copy(cmd.prevQuat);
       cmd.object.scale.copy(cmd.prevScale);
@@ -2124,7 +2272,21 @@ export class ThreeStudioEngine {
     const cmd = this.sceneRedoStack.pop();
     if (!cmd) return { ok: false, label: '' };
 
-    if (cmd.kind === 'transform') {
+    if (cmd.kind === 'hero-swap') {
+      const restored = {
+        root: cmd.nextRoot,
+        basePos: cmd.nextBasePos,
+        baseRot: cmd.nextBaseRot,
+        baseScale: cmd.nextBaseScale,
+        clips: cmd.nextClips,
+        wasAutoRigged: cmd.nextWasAutoRigged,
+        disposables: cmd.nextDisposables,
+      };
+      this.restoreHeroSnapshot(restored, cmd);
+      if (restored.root && (restored.root as unknown as { isMesh?: boolean }).isMesh) {
+        this.selectAnyMesh(restored.root as THREE.Mesh);
+      }
+    } else if (cmd.kind === 'transform') {
       cmd.object.position.copy(cmd.nextPos);
       cmd.object.quaternion.copy(cmd.nextQuat);
       cmd.object.scale.copy(cmd.nextScale);
@@ -2206,6 +2368,8 @@ export class ThreeStudioEngine {
       emissiveIntensity?: number;
       opacity?: number;
       transparent?: boolean;
+      textureSlot?: string;
+      texture?: THREE.Texture | null;
     }
   ): void {
     mesh.visible = snap.visible;
@@ -2226,6 +2390,10 @@ export class ThreeStudioEngine {
         if (snap.emissiveIntensity !== undefined) targetMat.emissiveIntensity = snap.emissiveIntensity;
         if (snap.opacity !== undefined) targetMat.opacity = snap.opacity;
         if (snap.transparent !== undefined) targetMat.transparent = snap.transparent;
+        if (snap.textureSlot !== undefined) {
+          const slotKey = snap.textureSlot as keyof THREE.MeshStandardMaterial;
+          (targetMat[slotKey] as THREE.Texture | null) = (snap.texture ?? null) as THREE.Texture;
+        }
         targetMat.needsUpdate = true;
       }
     }
@@ -2828,6 +2996,7 @@ export class ThreeStudioEngine {
     targetPipeline: 'gltf' | 'sculpt' = 'gltf',
     options?: { autoRigIfStatic?: boolean; rigType?: AutoRigPreset }
   ): Promise<{ name: string; meshes: number; triangles: number; boneCount: number; autoRigged: boolean; clipCount: number }> {
+  const heroSnap = this.captureHeroSnapshot();
     const lowerName = file.name.toLowerCase();
     const buffer = await file.arrayBuffer();
 
@@ -2985,6 +3154,11 @@ export class ThreeStudioEngine {
     }
 
     const stats = this.installHeroGltfRoot(finalRoot, file.name, clips, isAutoRigged, extraDisposables);
+    // Só registra undo quando havia um modelo antes (a troca é reversível)
+    if (heroSnap.prevRoot) {
+      this.completeHeroSnapshot(heroSnap);
+      this.pushSceneUndo(heroSnap);
+    }
     return {
       name: file.name,
       meshes: stats.meshCount,
@@ -3257,6 +3431,7 @@ export class ThreeStudioEngine {
   }
 
   public insertRiggedHumanoidModel(): { name: string; boneCount: number } {
+    const heroSnap = this.captureHeroSnapshot();
     const rigOut = createRiggedHumanoidTemplate(this.settings.animation.exportProfile ?? 'standard');
     rigOut.riggedRoot.position.set(0, 0.15, 0);
     const modelName = 'Humanoide_Com_Ossos.glb';
@@ -3267,6 +3442,10 @@ export class ThreeStudioEngine {
       true,
       rigOut.disposables
     );
+    if (heroSnap.prevRoot) {
+      this.completeHeroSnapshot(heroSnap);
+      this.pushSceneUndo(heroSnap);
+    }
     return { name: modelName, boneCount: stats.boneCount };
   }
 
@@ -3650,7 +3829,7 @@ export class ThreeStudioEngine {
           },
           (error) => reject(error),
           {
-            binary: true,
+            binary: this.gltfExportBinaryOverride ?? true,
             onlyVisible: false,
             animations,
           }
@@ -3672,6 +3851,22 @@ export class ThreeStudioEngine {
           );
         }
       }
+    }
+  }
+
+  /**
+   * Exporta a cena como .GLTF (JSON, embute imagens em data URI).
+   * Reaproveita todo o pipeline do exportSampleGlb, apenas com binary: false.
+   */
+  public async exportGltfJson(
+    profile?: RigExportProfile,
+    multiActions?: AnimationActionCycle[]
+  ): Promise<Blob> {
+    this.gltfExportBinaryOverride = false;
+    try {
+      return await this.exportSampleGlb(profile, multiActions);
+    } finally {
+      this.gltfExportBinaryOverride = null;
     }
   }
 
@@ -3978,6 +4173,9 @@ export class ThreeStudioEngine {
       if (prevTex && prevTex.userData?.__isCustomUserTexture) {
         prevTex.dispose();
       }
+      // Undo: registra o estado anterior do slot de textura
+      const prevEmissiveHex = targetMat.emissive.getHex();
+      const prevEmissiveIntensity = targetMat.emissiveIntensity;
       tex.userData.__isCustomUserTexture = true;
       targetMat[slot] = tex;
       if (slot === 'emissiveMap') {
@@ -3989,6 +4187,37 @@ export class ThreeStudioEngine {
       this.disposables.push(tex);
       this.syncViewportShading();
       this.emitSelectionInfo(mesh);
+      this.sceneUndoStack.push({
+        kind: 'property',
+        label: `Textura ${slot}`,
+        mesh,
+        prev: {
+          visible: mesh.visible,
+          frustumCulled: mesh.frustumCulled,
+          wireframe: (targetMat as THREE.MeshStandardMaterial).wireframe,
+        },
+        next: {
+          visible: mesh.visible,
+          frustumCulled: mesh.frustumCulled,
+          wireframe: (targetMat as THREE.MeshStandardMaterial).wireframe,
+        },
+      } as SceneUndoCommand);
+      const lastCmd = this.sceneUndoStack[this.sceneUndoStack.length - 1];
+      if (lastCmd && lastCmd.kind === 'property') {
+        (lastCmd.prev as Record<string, unknown>).textureSlot = slot;
+        (lastCmd.prev as Record<string, unknown>).texture = prevTex ?? null;
+        (lastCmd.prev as Record<string, unknown>).emissiveHex = prevEmissiveHex;
+        (lastCmd.prev as Record<string, unknown>).emissiveIntensity = prevEmissiveIntensity;
+        (lastCmd.next as Record<string, unknown>).textureSlot = slot;
+        (lastCmd.next as Record<string, unknown>).texture = tex;
+        (lastCmd.next as Record<string, unknown>).emissiveHex = targetMat.emissive.getHex();
+        (lastCmd.next as Record<string, unknown>).emissiveIntensity = targetMat.emissiveIntensity;
+      }
+      if (this.sceneUndoStack.length > 40) {
+        this.sceneUndoStack.shift();
+      }
+      this.sceneRedoStack = [];
+      this.notifyUndoRedo();
       return true;
     } finally {
       URL.revokeObjectURL(url);
@@ -5319,6 +5548,7 @@ export class ThreeStudioEngine {
     turntable360?: boolean;
     onProgress?: (current: number, total: number) => void;
   }): Promise<{ blob: Blob; frameCount: number }> {
+    this.exportSequenceCancelRequested = false;
     const startFrame = Math.max(1, options.startFrame ?? this.settings.animation.frameStart ?? 1);
     const endFrame = Math.min(240, Math.max(startFrame, options.endFrame ?? this.settings.animation.frameEnd ?? 60));
     const step = Math.max(1, options.step ?? 1);
@@ -5338,6 +5568,9 @@ export class ThreeStudioEngine {
     const files: Record<string, Uint8Array> = {};
     try {
       for (let i = 0; i < frames.length; i++) {
+        if (this.exportSequenceCancelRequested) {
+          throw new Error('Exportação cancelada pelo usuário.');
+        }
         const f = frames[i];
         this.animFrameFloat = f;
         this.evaluateAnimationAtFrame(f);
@@ -5439,8 +5672,12 @@ export class ThreeStudioEngine {
       h: number;
     }> = [];
 
+    this.exportSequenceCancelRequested = false;
     try {
       for (let i = 0; i < frames.length; i++) {
+        if (this.exportSequenceCancelRequested) {
+          throw new Error('Exportação cancelada pelo usuário.');
+        }
         const f = frames[i];
         this.animFrameFloat = f;
         this.evaluateAnimationAtFrame(f);
@@ -5526,6 +5763,12 @@ export class ThreeStudioEngine {
       sheetWidth,
       sheetHeight,
     };
+  }
+
+  public requestCancelExportSequence(): void {
+    if (this.isExportingSequence) {
+      this.exportSequenceCancelRequested = true;
+    }
   }
 
   private syncSceneModeVisibility(): void {

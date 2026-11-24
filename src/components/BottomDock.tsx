@@ -14,6 +14,7 @@ import {
   SunDim,
   Undo2,
   Video,
+  X,
 } from 'lucide-react';
 import type {
   RenderSettings,
@@ -36,6 +37,9 @@ interface BottomDockProps {
   isRecording: boolean;
   transparentPng: boolean;
   exportingFramesLabel: string | null;
+  onCancelExport?: () => void;
+
+  cancelling?: boolean;
   onToggleTransparentPng: () => void;
   onExportFramesZip: () => void;
   onToggleRecordWebm: () => void;
@@ -69,6 +73,8 @@ export function BottomDock({
   isRecording,
   transparentPng,
   exportingFramesLabel,
+  onCancelExport,
+  cancelling,
   onToggleTransparentPng,
   onExportFramesZip,
   onToggleRecordWebm,
@@ -330,6 +336,20 @@ export function BottomDock({
             <span>{transparentPng ? 'Alpha: ON' : 'Alpha'}</span>
           </button>
 
+          {exportingFramesLabel && onCancelExport && (
+            <button
+              type="button"
+              onClick={onCancelExport}
+              disabled={cancelling}
+              title="Cancelar exportação em andamento"
+              aria-label="Cancelar exportação"
+              className="h-8 px-2.5 text-xs font-medium rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-400/50 flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Cancelar ({exportingFramesLabel})</span>
+            </button>
+          )}
+
           <button
             type="button"
             disabled={Boolean(exportingFramesLabel)}
@@ -338,7 +358,7 @@ export function BottomDock({
             className="h-8 px-2.5 text-xs font-medium rounded-lg bg-[#151b29] hover:bg-[#1c2436] disabled:opacity-60 text-slate-200 border border-white/10 flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer"
           >
             <Film className="w-3.5 h-3.5 text-emerald-400" />
-            <span>{exportingFramesLabel ?? 'Seq. PNG'}</span>
+            <span>{exportingFramesLabel ? `Seq. PNG (${exportingFramesLabel})` : 'Seq. PNG'}</span>
           </button>
 
           <button

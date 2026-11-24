@@ -7,6 +7,8 @@ export interface BlenderExportConfig {
   profile?: RigExportProfile;
   includeTransparentPreview?: boolean;
   multiActions?: AnimationActionCycle[];
+  /** Arquivos adicionais embutidos no .ZIP (nome → bytes). */
+  extraFiles?: Record<string, Uint8Array | string>;
 }
 
 export interface CameraConfig {
@@ -609,6 +611,11 @@ export async function exportBlender53Package(
   zip.file('LEIAME_BLENDER_5_3.txt', readmeTxt);
   if (transparentPreview) {
     zip.file('quadro_transparente.png', transparentPreview);
+  }
+  if (config.extraFiles) {
+    for (const [name, data] of Object.entries(config.extraFiles)) {
+      zip.file(name, data);
+    }
   }
 
   const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });

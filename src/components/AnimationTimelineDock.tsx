@@ -138,6 +138,7 @@ interface AnimationTimelineDockProps {
     clipIndex?: number,
     startAt?: number,
   ) => void;
+  mode?: 'full' | 'timeline';
   lodTelemetry?: { loadedModelName?: string | null; loadedMeshCount?: number; boneCount?: number; totalLodNodes?: number; lod0Count?: number; lod1Count?: number; lod2Count?: number };
   exportProfile?: RigExportProfile;
   onChangeExportProfile?: (profile: RigExportProfile) => void;
@@ -160,6 +161,8 @@ interface AnimationTimelineDockProps {
   onExportSpriteSheetZip?: (step?: number, transparentOverride?: boolean) => void;
   exportingFramesLabel?: string | null;
   exportingSpriteSheetLabel?: string | null;
+  onCancelExport?: () => void;
+  cancelling?: boolean;
   finish?: MaterialFinish;
   explosion?: number;
   speed?: number;
@@ -221,7 +224,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
     { id: 'base', name: 'Base', visible: true, solo: false, mute: false, blendMode: 'replace', extrapolation: 'hold', strips: animation.nlaStrips ?? [] },
   ]);
   const [onionSkinning, setOnionSkinning] = useState({ enabled: false, beforeFrames: 2, afterFrames: 2, opacity: 0.3 });
-  const [, setShowTimecode] = useState(true);
+  const [timecodeVisible, setTimecodeVisible] = useState(true);
 
   const [commandTab, setCommandTab] = useState<'import' | 'pbr' | 'rig' | 'vfx'>('rig');
 
@@ -518,6 +521,18 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             </span>
             <span className="font-mono text-[9px]">{props.turntable360 ? 'ON' : 'OFF'}</span>
           </button>
+          {props.exportingFramesLabel && props.onCancelExport && (
+            <button
+              type="button"
+              onClick={props.onCancelExport}
+              disabled={props.cancelling}
+              title="Cancelar exportação em andamento"
+              className="w-full h-7 px-2 text-[9px] font-semibold rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-400/50 flex items-center justify-center gap-1 cursor-pointer"
+            >
+              <X className="w-3 h-3" />
+              <span>Cancelar exportação ({props.exportingFramesLabel})</span>
+            </button>
+          )}
           <button
             type="button"
             disabled={Boolean(props.exportingFramesLabel)}
@@ -1233,33 +1248,37 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
       className="relative w-full z-20 bg-[#0b0e14]/97 backdrop-blur-md border-t border-white/12 shadow-2xl flex flex-col select-none"
     >
       <div className="flex-1 overflow-y-auto">
-        <div className="border-b border-white/10 bg-[#0f141e]/80 sticky top-0 z-10 px-2 sm:px-2.5">
-          <div className="flex items-center gap-1 px-1 py-1 overflow-x-auto no-scrollbar">
-            {(['import', 'pbr', 'rig', 'vfx'] as const).map((tab) => {
-              const Icon = tabIcon[tab];
-              return (
-                <button
-                  key={tab}
-                  type="button"
-                  role="tab"
-                  aria-selected={commandTab === tab}
-                  onClick={() => setCommandTab(tab)}
-                  className={`flex-1 shrink-0 h-8 sm:h-9 px-2 sm:px-2.5 rounded-lg border flex items-center justify-center gap-1.5 cursor-pointer transition-colors ${commandTab === tab ? 'bg-sky-500/20 border-sky-400/55 text-sky-200 shadow-sm' : 'bg-[#0c1018] border-transparent text-slate-400 hover:text-white hover:border-white/10'}`}
-                >
-                  <Icon className="w-3 h-3 shrink-0" />
-                  <span className="text-[9px] font-medium whitespace-nowrap">{tabLabel[tab]}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {props.mode !== 'timeline' && (
+          <div>
+            <div className="border-b border-white/10 bg-[#0f141e]/80 sticky top-0 z-10 px-2 sm:px-2.5">
+              <div className="flex items-center gap-1 px-1 py-1 overflow-x-auto no-scrollbar">
+                {(['import', 'pbr', 'rig', 'vfx'] as const).map((tab) => {
+                  const Icon = tabIcon[tab];
+                  return (
+                    <button
+                      key={tab}
+                      type="button"
+                      role="tab"
+                      aria-selected={commandTab === tab}
+                      onClick={() => setCommandTab(tab)}
+                      className={`flex-1 shrink-0 h-8 sm:h-9 px-2 sm:px-2.5 rounded-lg border flex items-center justify-center gap-1.5 cursor-pointer transition-colors ${commandTab === tab ? 'bg-sky-500/20 border-sky-400/55 text-sky-200 shadow-sm' : 'bg-[#0c1018] border-transparent text-slate-400 hover:text-white hover:border-white/10'}`}
+                    >
+                      <Icon className="w-3 h-3 shrink-0" />
+                      <span className="text-[9px] font-medium whitespace-nowrap">{tabLabel[tab]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-        <div className="p-2 sm:p-2.5 pb-12">
-          {commandTab === 'import' && <ImportExportPanel />}
-          {commandTab === 'pbr' && <PbrCameraPanel />}
-          {commandTab === 'rig' && <RigAnimationPanel />}
-          {commandTab === 'vfx' && <VfxStudioPanel />}
-        </div>
+            <div className="p-2 sm:p-2.5 pb-12">
+              {commandTab === 'import' && <ImportExportPanel />}
+              {commandTab === 'pbr' && <PbrCameraPanel />}
+              {commandTab === 'rig' && <RigAnimationPanel />}
+              {commandTab === 'vfx' && <VfxStudioPanel />}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="h-9 sm:h-10 px-2 sm:px-2.5 border-b border-white/10 bg-[#0f141e] flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
@@ -1357,6 +1376,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             type="button"
             onClick={jumpPrevKeyframe}
             title="Ir para keyframe anterior (Setas Esquerda)"
+            aria-label="Keyframe anterior"
             className="h-7 w-7 rounded-md bg-[#151b28] hover:bg-[#1d2638] text-slate-300 hover:text-white border border-white/10 flex items-center justify-center cursor-pointer"
           >
             <SkipBack className="w-3.5 h-3.5" />
@@ -1365,6 +1385,8 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             type="button"
             onClick={() => props.onUpdateAnimation({ playing: !animation.playing, enabled: true, cycleMode: 'full_cycle' })}
             title="Play / Pausa (Espaço)"
+            aria-label={animation.playing ? 'Pausar animação' : 'Reproduzir animação'}
+            aria-pressed={animation.playing}
             className={`h-7 w-7 rounded-md border flex items-center justify-center cursor-pointer ${animation.playing ? 'bg-emerald-500/25 text-emerald-200 border-emerald-400/50' : 'bg-sky-400 hover:bg-sky-300 text-slate-950 border-transparent'}`}
           >
             {animation.playing ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
@@ -1373,6 +1395,7 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             type="button"
             onClick={jumpNextKeyframe}
             title="Ir para próximo keyframe (Setas Direita)"
+            aria-label="Próximo keyframe"
             className="h-7 w-7 rounded-md bg-[#151b28] hover:bg-[#1d2638] text-slate-300 hover:text-white border border-white/10 flex items-center justify-center cursor-pointer"
           >
             <SkipForward className="w-3.5 h-3.5" />
@@ -1383,7 +1406,9 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
           <button
             type="button"
             onClick={props.onToggleRecordWebm}
-            title="Gravar Turntable 360° (.webm)"
+            title={props.isRecording ? 'Parar gravação e baixar vídeo .WebM' : 'Gravar Turntable 360° (.webm)'}
+            aria-label={props.isRecording ? 'Parar gravação' : 'Gravar turntable 360°'}
+            aria-pressed={props.isRecording}
             className={`h-7 w-7 rounded-md border flex items-center justify-center cursor-pointer ${props.isRecording ? 'bg-rose-500/20 text-rose-200 border-rose-400/50 animate-pulse' : 'bg-[#151b28] text-slate-300 border-white/10 hover:text-white'}`}
           >
             <Circle className="w-3 h-3" />
@@ -1392,14 +1417,18 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
             type="button"
             onClick={() => setOnionSkinning((prev) => ({ ...prev, enabled: !prev.enabled }))}
             title="Onion Skinning (Antes / Depois)"
+            aria-label="Onion skinning"
+            aria-pressed={onionSkinning.enabled}
             className={`h-7 w-7 rounded-md border flex items-center justify-center cursor-pointer ${onionSkinning.enabled ? 'bg-sky-500/20 text-sky-300 border-sky-400/50' : 'bg-[#151b28] text-slate-400 border-white/10 hover:text-white'}`}
           >
             <Eye className="w-3.5 h-3.5" />
           </button>
           <button
             type="button"
-            onClick={() => setShowTimecode((prev) => !prev)}
-            title="Alternar Timecode"
+            onClick={() => setTimecodeVisible((prev) => !prev)}
+            title={timecodeVisible ? 'Ocultar Timecode' : 'Mostrar Timecode'}
+            aria-label={timecodeVisible ? 'Ocultar timecode' : 'Mostrar timecode'}
+            aria-pressed={timecodeVisible}
             className="h-7 w-7 rounded-md border flex items-center justify-center cursor-pointer bg-[#151b28] text-slate-400 border-white/10 hover:text-white"
           >
             <X className="w-3.5 h-3.5" />
@@ -1444,7 +1473,15 @@ export function AnimationTimelineDock(props: AnimationTimelineDockProps) {
                   <input
                     type="checkbox"
                     checked={track.visible}
-                    className="w-3 h-3 rounded accent-sky-500"
+                    onChange={() =>
+                      setTracks((prev) =>
+                        prev.map((t) =>
+                          t.id === track.id ? { ...t, visible: !t.visible } : t
+                        )
+                      )
+                    }
+                    aria-label={`Alternar visibilidade da trilha ${track.name}`}
+                    className="w-3 h-3 rounded accent-sky-500 cursor-pointer"
                   />
                   <span className={`text-[9px] ${track.visible ? 'text-slate-200' : 'text-slate-500'} truncate`}>{track.name}</span>
                 </div>

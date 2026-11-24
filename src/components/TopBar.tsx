@@ -24,6 +24,12 @@ interface TopBarProps {
   onLoadProjectFile: (file: File) => void;
   onImportModelFile: (file: File) => void;
   onExportGlb: () => void;
+  onExportGltf?: () => void;
+  onExportAllZip?: () => void;
+  onCaptureFramesZip?: () => void;
+  exportingModel?: boolean;
+  exportingZip?: boolean;
+  exportingFrames?: boolean;
 }
 
 const WORKSPACES: Array<{ id: SceneMode; label: string; tip: string }> = [
@@ -49,6 +55,12 @@ export function TopBar({
   onLoadProjectFile,
   onImportModelFile,
   onExportGlb,
+  onExportGltf,
+  onExportAllZip,
+  onCaptureFramesZip,
+  exportingModel = false,
+  exportingZip = false,
+  exportingFrames = false,
 }: TopBarProps) {
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -62,8 +74,17 @@ export function TopBar({
         setFileMenuOpen(false);
       }
     };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setFileMenuOpen(false);
+      }
+    };
     window.addEventListener('mousedown', onDown);
-    return () => window.removeEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
   }, [fileMenuOpen]);
 
   return (
@@ -97,10 +118,13 @@ export function TopBar({
             ref={projectInputRef}
             type="file"
             accept=".json,.vertice.json"
+            aria-label="Abrir arquivo de projeto .json"
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f) onLoadProjectFile(f);
+              if (f && f.name.toLowerCase().endsWith('.json')) {
+                onLoadProjectFile(f);
+              }
               e.target.value = '';
             }}
           />
@@ -108,6 +132,7 @@ export function TopBar({
             ref={modelInputRef}
             type="file"
             accept=".glb,.gltf,.zip"
+            aria-label="Importar modelo .glb, .gltf ou .zip"
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
@@ -118,9 +143,9 @@ export function TopBar({
 
           {fileMenuOpen && (
             <div
+              className="absolute left-0 top-10 w-56 max-w-[calc(100vw-1.5rem)] rounded-xl bg-[#101521] border border-white/14 shadow-2xl p-1.5 flex flex-col gap-0.5 z-50"
               role="menu"
               aria-label="Menu de Arquivo"
-              className="absolute left-0 top-10 w-56 max-w-[calc(100vw-1.5rem)] rounded-xl bg-[#101521] border border-white/14 shadow-2xl p-1.5 flex flex-col gap-0.5 z-50"
             >
               <button
                 type="button"
@@ -169,15 +194,72 @@ export function TopBar({
               <button
                 type="button"
                 role="menuitem"
+                disabled={exportingModel || exportingZip || exportingFrames}
                 onClick={() => {
                   setFileMenuOpen(false);
                   onExportGlb();
                 }}
-                className="h-8 px-2.5 rounded-lg text-xs text-slate-200 hover:text-white hover:bg-white/8 flex items-center gap-2 cursor-pointer"
+                className="h-8 px-2.5 rounded-lg text-xs text-slate-200 hover:text-white hover:bg-white/8 flex items-center justify-between gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Download className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Exportar Cena (.GLB)</span>
+                <span className="flex items-center gap-2">
+                  <Download className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>{exportingModel ? 'Exportando modelo...' : 'Exportar Modelo (.GLB)'}</span>
+                </span>
               </button>
+
+              {onExportGltf && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={exportingModel || exportingZip || exportingFrames}
+                  onClick={() => {
+                    setFileMenuOpen(false);
+                    onExportGltf();
+                  }}
+                  className="h-8 px-2.5 rounded-lg text-xs text-slate-200 hover:text-white hover:bg-white/8 flex items-center justify-between gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="flex items-center gap-2">
+                    <Download className="w-3.5 h-3.5 text-sky-400" />
+                    <span>Exportar Modelo (.GLTF JSON)</span>
+                  </span>
+                </button>
+              )}
+
+              {onExportAllZip && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={exportingModel || exportingZip || exportingFrames}
+                  onClick={() => {
+                    setFileMenuOpen(false);
+                    onExportAllZip();
+                  }}
+                  className="h-8 px-2.5 rounded-lg text-xs text-slate-200 hover:text-white hover:bg-white/8 flex items-center justify-between gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="flex items-center gap-2">
+                    <Download className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{exportingZip ? 'Empacotando ZIP completo...' : 'Exportar ZIP Completo (GLB + PNGs + Blender)'}</span>
+                  </span>
+                </button>
+              )}
+
+              {onCaptureFramesZip && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={exportingModel || exportingZip || exportingFrames}
+                  onClick={() => {
+                    setFileMenuOpen(false);
+                    onCaptureFramesZip();
+                  }}
+                  className="h-8 px-2.5 rounded-lg text-xs text-slate-200 hover:text-white hover:bg-white/8 flex items-center justify-between gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="flex items-center gap-2">
+                    <Download className="w-3.5 h-3.5 text-rose-400" />
+                    <span>{exportingFrames ? 'Exportando sequência...' : 'Exportar Sequência PNG (fundo transparente)'}</span>
+                  </span>
+                </button>
+              )}
             </div>
           )}
         </div>

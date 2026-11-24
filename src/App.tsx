@@ -15,7 +15,7 @@ import {
   loadStartupModelFile,
 } from './utils/startupModelStore';
 import { useSystemStore } from './stores/SystemStore';
-import { downloadBlender53Package } from './services/blenderZipExporter';
+import { downloadBlender53Package, exportBlender53Package } from './services/blenderZipExporter';
 import type {
   AnimationActionCycle,
   AnimationSettings,
@@ -286,6 +286,7 @@ export default function App() {
 
   const [exportingFramesLabel, setExportingFramesLabel] = useState<string | null>(null);
   const [exportingSpriteSheetLabel, setExportingSpriteSheetLabel] = useState<string | null>(null);
+  const [cancellingExport, setCancellingExport] = useState(false);
   const [exportingBlenderZip, setExportingBlenderZip] = useState(false);
   const [exportingGlb, setExportingGlb] = useState(false);
   const [, setRigBoneNames] = useState<string[]>([]);
@@ -428,8 +429,14 @@ export default function App() {
         parsed.savedPoses = savedPosesRef.current;
         finalJson = JSON.stringify(parsed, null, 2);
         localStorage.setItem('vertice_studio_project_v1', finalJson);
-      } catch {
-        // Ignore storage quota errors cleanly
+      } catch (storageErr) {
+        const quotaMsg =
+          storageErr instanceof DOMException &&
+          (storageErr.name === 'QuotaExceededError' ||
+            storageErr.name === 'NS_ERROR_DOM_QUOTA_REACHED')
+            ? ' (armazenamento local cheio — só o download foi gerado)'
+            : '';
+        showNotice(`Aviso ao salvar${quotaMsg}.`);
       }
       if (downloadFile) {
         const blob = new Blob([finalJson], { type: 'application/json' });
@@ -449,7 +456,10 @@ export default function App() {
 
   const handleLoadProjectFile = useCallback(
     async (file: File) => {
-      if (!threeEngineRef.current) return;
+      if (!threeEngineRef.current) {
+        showNotice('Abrir projeto disponível no pipeline WebGL2.');
+        return;
+      }
       try {
         const text = await file.text();
         const res = threeEngineRef.current.importProjectJson(text);
@@ -472,8 +482,12 @@ export default function App() {
           setRigRevision((r) => r + 1);
         }
         showNotice(res.message);
-      } catch {
-        showNotice('Erro ao ler arquivo de projeto.');
+      } catch (err) {
+        showNotice(
+          err instanceof Error
+            ? `Erro ao ler arquivo de projeto: ${err.message}`
+            : 'Erro ao ler arquivo de projeto.'
+        );
       }
     },
     [showNotice]
@@ -1046,6 +1060,15 @@ export default function App() {
         showNotice('Importação de modelos disponível no pipeline WebGL2.');
         return;
       }
+      const lowerName = file.name.toLowerCase();
+      const isSupported =
+        lowerName.endsWith('.glb') ||
+        lowerName.endsWith('.gltf') ||
+        lowerName.endsWith('.zip');
+      if (!isSupported) {
+        showNotice('Formato não suportado. Use .GLB, .GLTF ou .ZIP.');
+        return;
+      }
       try {
         setJointMarkersActive(false);
         const info = await threeEngineRef.current.loadGltfFile(file, 'gltf', {
@@ -1127,13 +1150,121 @@ export default function App() {
             multiClipExport ? ' com pacote Multi-Clipes NLA' : ''
           } (Blender 5.3+).`
         );
-      } catch {
-        showNotice('Não foi possível exportar o modelo GLB.');
+      } catch (err) {
+        showNotice(
+          err instanceof Error
+            ? `Não foi possível exportar o modelo GLB: ${err.message}`
+            : 'Não foi possível exportar o modelo GLB.'
+        );
       } finally {
         setExportingGlb(false);
       }
     },
     [exportingGlb, multiClipExport, settings.animation.exportProfile, showNotice]
+  );
+
+  const handleExportGltfJson = useCallback(
+    async (profile?: RigExportProfile) => {
+      if (!threeEngineRef.current || exportingGlb) return;
+      try {
+        setExportingGlb(true);
+        const chosenProfile = profile ?? settings.animation.exportProfile;
+        const blob = await threeEngineRef.current.exportGltfJson(
+          chosenProfile,
+          multiClipExport ? MULTI_CLIP_EXPORT_ACTIONS : undefined
+        );
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `vertice-studio-${chosenProfile}-blender53.gltf`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showNotice(
+          `Arquivo vertice-studio-${chosenProfile}-blender53.gltf (JSON) exportado${
+            multiClipExport ? ' com Multi-Clipes NLA' : ''
+          }.`
+        );
+      } catch (err) {
+        showNotice(
+          err instanceof Error
+            ? `Não foi possível exportar o modelo .GLTF: ${err.message}`
+            : 'Não foi possível exportar o modelo .GLTF.'
+        );
+      } finally {
+        setExportingGlb(false);
+      }
+    },
+    [exportingGlb, multiClipExport, settings.animation.exportProfile, showNotice]
+  );
+
+  const handleExportAllZip = useCallback(
+    async (profile?: RigExportProfile) => {
+      if (!threeEngineRef.current || exportingBlenderZip || exportingGlb || exportingFramesLabel) return;
+      try {
+        setExportingBlenderZip(true);
+        const chosenProfile = profile ?? settings.animation.exportProfile;
+        const glbBlob = await threeEngineRef.current.exportSampleGlb(
+          chosenProfile,
+          multiClipExport ? MULTI_CLIP_EXPORT_ACTIONS : undefined
+        );
+        const { blob: framesBlob, frameCount } = await threeEngineRef.current.exportAnimationFramesZip({
+          startFrame: settings.animation.frameStart,
+          endFrame: settings.animation.frameEnd,
+          step: 1,
+          transparentBg: true,
+          resolution: captureResolution,
+          turntable360,
+        });
+        const zipBlob = await exportBlender53Package(
+          threeEngineRef.current,
+          cameraQuaternion,
+          {
+            profile: chosenProfile,
+            includeTransparentPreview: true,
+            multiActions: multiClipExport ? MULTI_CLIP_EXPORT_ACTIONS : undefined,
+            extraFiles: {
+              'modelo.glb': new Uint8Array(await glbBlob.arrayBuffer()),
+              'sequencia_png.zip': new Uint8Array(await framesBlob.arrayBuffer()),
+            },
+          }
+        );
+        const url = URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'vertice-studio-pacote-completo.zip';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showNotice(
+          `ZIP completo exportado: modelo GLB + ${frameCount} PNGs + cena Blender 5.3+.`
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : '';
+        if (msg.includes('cancelada')) {
+          showNotice('Exportação cancelada.');
+        } else {
+          showNotice(
+            msg
+              ? `Não foi possível gerar o pacote .ZIP completo: ${msg}`
+              : 'Não foi possível gerar o pacote .ZIP completo.'
+          );
+        }
+      } finally {
+        setExportingBlenderZip(false);
+      }
+    },
+    [
+      exportingBlenderZip,
+      exportingGlb,
+      exportingFramesLabel,
+      multiClipExport,
+      settings.animation.exportProfile,
+      settings.animation.frameStart,
+      settings.animation.frameEnd,
+      captureResolution,
+      turntable360,
+      cameraQuaternion,
+      showNotice,
+    ]
   );
 
   const handleExportBlenderZip = useCallback(
@@ -1154,14 +1285,23 @@ export default function App() {
         showNotice(
           `ZIP Completo Blender 5.3+ (.glb + cena_config.json + abrir_no_blender.py) exportado!`
         );
-      } catch {
-        showNotice('Não foi possível gerar o pacote .ZIP completo.');
+      } catch (err) {
+        showNotice(
+          err instanceof Error
+            ? `Não foi possível gerar o pacote .ZIP completo: ${err.message}`
+            : 'Não foi possível gerar o pacote .ZIP completo.'
+        );
       } finally {
         setExportingBlenderZip(false);
       }
     },
     [exportingBlenderZip, multiClipExport, settings.animation.exportProfile, showNotice, cameraQuaternion]
   );
+
+  const handleCancelExportSequence = useCallback(() => {
+    setCancellingExport(true);
+    threeEngineRef.current?.requestCancelExportSequence();
+  }, []);
 
   const handleCaptureFrame = useCallback(
     (transparentOverride?: boolean) => {
@@ -1230,10 +1370,20 @@ export default function App() {
             turntable360 ? ', giro 360°' : ''
           }) exportados em .ZIP!`
         );
-      } catch {
-        showNotice('Não foi possível exportar a sequência quadro a quadro.');
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : '';
+        if (msg.includes('cancelada')) {
+          showNotice('Exportação cancelada.');
+        } else {
+          showNotice(
+            msg
+              ? `Não foi possível exportar a sequência quadro a quadro: ${msg}`
+              : 'Não foi possível exportar a sequência quadro a quadro.'
+          );
+        }
       } finally {
         setExportingFramesLabel(null);
+        setCancellingExport(false);
       }
     },
     [
@@ -1278,10 +1428,20 @@ export default function App() {
         showNotice(
           `Sprite Sheet ${res.cols}x${res.rows} (${res.sheetWidth}x${res.sheetHeight}px + JSON) exportado!`
         );
-      } catch {
-        showNotice('Não foi possível gerar o Sprite Sheet.');
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : '';
+        if (msg.includes('cancelada')) {
+          showNotice('Exportação cancelada.');
+        } else {
+          showNotice(
+            msg
+              ? `Não foi possível gerar o Sprite Sheet: ${msg}`
+              : 'Não foi possível gerar o Sprite Sheet.'
+          );
+        }
       } finally {
         setExportingSpriteSheetLabel(null);
+        setCancellingExport(false);
       }
     },
     [
@@ -1512,6 +1672,12 @@ export default function App() {
         onLoadProjectFile={(file) => void handleLoadProjectFile(file)}
         onImportModelFile={(file) => void handleUploadGltf(file)}
         onExportGlb={() => void handleExportSampleGlb()}
+        onExportGltf={() => void handleExportGltfJson()}
+        onExportAllZip={() => void handleExportAllZip()}
+        onCaptureFramesZip={() => void handleExportFramesZip(1, true)}
+        exportingModel={exportingGlb}
+        exportingZip={exportingBlenderZip}
+        exportingFrames={Boolean(exportingFramesLabel)}
       />
 
       <main
@@ -1660,6 +1826,8 @@ export default function App() {
             onExportSpriteSheetZip={(step, t) => void handleExportSpriteSheetZip(step, t)}
             exportingFramesLabel={exportingFramesLabel}
             exportingSpriteSheetLabel={exportingSpriteSheetLabel}
+            onCancelExport={handleCancelExportSequence}
+                cancelling={cancellingExport}
             // Materials & Camera (PBR Engine)
             finish={settings.finish}
             explosion={settings.explosion}
@@ -1794,6 +1962,8 @@ export default function App() {
                 isRecording={isRecording}
                 transparentPng={transparentPng}
                 exportingFramesLabel={exportingFramesLabel}
+                onCancelExport={handleCancelExportSequence}
+                cancelling={cancellingExport}
                 onToggleTransparentPng={() => setTransparentPng((p) => !p)}
                 onExportFramesZip={() => void handleExportFramesZip(1, transparentPng)}
                 onToggleRecordWebm={handleToggleRecordWebm}
@@ -1820,6 +1990,8 @@ export default function App() {
               isRecording={isRecording}
               transparentPng={transparentPng}
               exportingFramesLabel={exportingFramesLabel}
+              onCancelExport={handleCancelExportSequence}
+                cancelling={cancellingExport}
               onToggleTransparentPng={() => setTransparentPng((p) => !p)}
               onExportFramesZip={() => void handleExportFramesZip(1, transparentPng)}
               onToggleRecordWebm={handleToggleRecordWebm}
@@ -1835,7 +2007,11 @@ export default function App() {
 
         {/* Notificação discreta */}
         {notice && (
-          <div className="fixed top-15 sm:top-[68px] left-1/2 -translate-x-1/2 z-30 bg-[#141c2c] border border-sky-400/35 text-slate-100 text-xs px-3.5 sm:px-4 py-2 rounded-xl shadow-xl max-w-[calc(100vw-6rem)] text-center">
+          <div
+            role="status"
+            aria-live="polite"
+            className="fixed top-15 sm:top-[68px] left-1/2 -translate-x-1/2 z-30 bg-[#141c2c] border border-sky-400/35 text-slate-100 text-xs px-3.5 sm:px-4 py-2 rounded-xl shadow-xl max-w-[calc(100vw-6rem)] text-center"
+          >
             {notice}
           </div>
         )}
