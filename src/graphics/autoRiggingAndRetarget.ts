@@ -577,7 +577,22 @@ function evaluateActionParams(
     stretchY: 1,
   };
 
-  if (action === 'walk') {
+  if (action === 'idle') {
+    const s = Math.sin(angle * 0.5);
+    const c = Math.cos(angle * 0.5);
+    out.rootLiftY = Math.abs(c) * 0.015 * amp;
+    out.torsoRotX = s * 0.03 * amp;
+    out.chestRotX = s * 0.04 * amp;
+    out.lHipX = s * 0.015 * amp;
+    out.rHipX = -s * 0.015 * amp;
+    out.lKneeX = Math.max(0, c * 0.02 * amp);
+    out.rKneeX = Math.max(0, -c * 0.02 * amp);
+    out.lShoX = s * 0.04 * amp;
+    out.rShoX = -s * 0.04 * amp;
+    out.lElbBend = 0.22 + Math.max(0, s) * 0.1;
+    out.rElbBend = 0.22 + Math.max(0, -s) * 0.1;
+    out.stretchY = 1;
+  } else if (action === 'walk') {
     const s = Math.sin(angle);
     const c = Math.cos(angle);
     out.rootLiftY = Math.abs(c) * 0.03 * amp;
@@ -611,13 +626,10 @@ function evaluateActionParams(
     out.rElbBend = 1.25;
     out.torsoRotY = s * 0.24;
     out.stretchY = 1;
-  } else if (action === 'jump' || action === 'arc_leap') {
+  } else if (action === 'jump') {
     const jumpArc = Math.max(0, Math.sin(angle));
     const dip = Math.min(0, Math.sin(angle)) * 0.35;
     out.rootLiftY = jumpArc * 0.62 * amp + dip * 0.12;
-    if (action === 'arc_leap') {
-      out.rootOffsetX = Math.sin(angle) * 0.28;
-    }
     out.torsoRotX += dip * 0.45 - jumpArc * 0.16;
     out.lHipX = -jumpArc * 0.55 - dip * 0.45;
     out.rHipX = -jumpArc * 0.55 - dip * 0.45;
@@ -631,21 +643,6 @@ function evaluateActionParams(
     out.rShoZ = drop * (1 - jumpArc * 0.45);
     out.lElbBend = 0.45;
     out.rElbBend = 0.45;
-    out.stretchY = 1;
-  } else if (action === 'punch') {
-    const thrust = Math.pow(Math.max(0, Math.sin(angle)), 2);
-    const windUp = Math.min(0, Math.sin(angle)) * 0.6;
-    out.torsoRotY = -windUp * 0.55 + thrust * 0.68 * amp;
-    out.chestRotX = thrust * 0.15;
-    out.rShoX = -1.48 * thrust * amp + windUp * 0.55;
-    out.rShoZ = drop * (1 - thrust * 0.35);
-    out.rElbBend = 1.25 * (1 - thrust) + 0.08;
-    out.lShoX = -0.45;
-    out.lElbBend = 1.35;
-    out.lHipX = -0.18;
-    out.rHipX = 0.22;
-    out.rKneeX = 0.2;
-    out.rootLiftY = -thrust * 0.05;
     out.stretchY = 1;
   } else if (action === 'slash') {
     const swing = Math.sin(angle);
@@ -661,43 +658,106 @@ function evaluateActionParams(
     out.rHipX = 0.25;
     out.rKneeX = 0.28;
     out.rootLiftY = -strike * 0.04;
-  } else if (action === 'aim') {
-    const breath = Math.sin(angle) * 0.04;
-    out.torsoRotY = 0.32;
-    out.torsoRotX += 0.08;
-    out.rShoX = -1.38 + breath;
-    out.rShoZ = drop - 0.18;
-    out.rElbBend = 0.28;
-    out.lShoX = -1.15 + breath;
-    out.lShoZ = -drop + 0.35;
-    out.lElbBend = 0.95;
-    out.lHipX = -0.16;
-    out.rHipX = 0.18;
-    out.lKneeX = 0.14;
-    out.rKneeX = 0.18;
-  } else if (action === 'dance') {
-    const s = Math.sin(angle * 2);
-    const c = Math.cos(angle * 2);
-    out.rootLiftY = Math.abs(s) * 0.09 * amp;
-    out.rootOffsetX = Math.sin(angle) * 0.08 * amp;
-    out.torsoRotY = Math.sin(angle) * 0.35 * amp;
-    out.chestRotY = -Math.sin(angle) * 0.22;
-    out.lHipX = -Math.max(0, s) * 0.35;
-    out.rHipX = -Math.max(0, -s) * 0.35;
-    out.lKneeX = Math.max(0, s) * 0.55;
-    out.rKneeX = Math.max(0, -s) * 0.55;
-    out.lShoZ = -drop + 0.95 + c * 0.45 * amp;
-    out.rShoZ = drop - 0.95 - c * 0.45 * amp;
-    out.lElbBend = 0.85 + s * 0.35;
-    out.rElbBend = 0.85 - s * 0.35;
-  } else if (action === 'wave') {
-    out.rShoZ = drop - (2.15 + Math.sin(angle * 2) * 0.35 * amp);
-    out.rElbBend = 0.55 + Math.cos(angle * 2) * 0.42 * amp;
-    out.torsoRotX += -0.05;
-    out.torsoRotY = 0.12;
-  } else {
-    out.rootLiftY = Math.sin(angle) * 0.018;
-    out.torsoRotX += Math.sin(angle) * 0.025;
+  } else if (action === 'hit') {
+    const recoil = Math.max(0, Math.sin(angle * 4));
+    out.rootLiftY = -recoil * 0.12 * amp;
+    out.torsoRotX = recoil * 0.4 * amp;
+    out.chestRotX = recoil * 0.6 * amp;
+    out.lShoX = recoil * 0.3 * amp;
+    out.rShoX = recoil * 0.3 * amp;
+    out.lElbBend = 0.5 + recoil * 0.3;
+    out.rElbBend = 0.5 + recoil * 0.3;
+    out.lHipX = -recoil * 0.1 * amp;
+    out.rHipX = recoil * 0.1 * amp;
+    out.stretchY = 1 - recoil * 0.1;
+  } else if (action === 'death') {
+    const progress = Math.min(1, angle / Math.PI);
+    out.rootLiftY = -0.9 * progress;
+    out.torsoRotX = 0.8 * progress;
+    out.chestRotX = 1.0 * progress;
+    out.lShoX = 0.5 * progress;
+    out.rShoX = 0.5 * progress;
+    out.lShoZ = -drop + 0.3 * progress;
+    out.rShoZ = drop - 0.3 * progress;
+    out.lElbBend = 0.22 + 0.3 * progress;
+    out.rElbBend = 0.22 + 0.3 * progress;
+    out.lHipX = 0.3 * progress;
+    out.rHipX = 0.3 * progress;
+    out.lKneeX = 0.3 * progress;
+    out.rKneeX = 0.3 * progress;
+    out.stretchY = 1 - 0.5 * progress;
+  } else if (action === 'block') {
+    const s = Math.sin(angle);
+    out.rootLiftY = -0.12 + s * 0.02;
+    out.torsoRotX = 0.3;
+    out.chestRotX = 0.4;
+    out.lShoX = 0.8;
+    out.rShoX = -0.8;
+    out.lShoZ = -drop + 0.6;
+    out.rShoZ = drop - 0.6;
+    out.lElbBend = 0.5;
+    out.rElbBend = 0.5;
+    out.lHipX = 0.4;
+    out.rHipX = 0.4;
+    out.lKneeX = 0.1;
+    out.rKneeX = 0.1;
+    out.stretchY = 0.95;
+  } else if (action === 'fall') {
+    const s = Math.sin(angle);
+    const c = Math.cos(angle);
+    out.rootLiftY = 0;
+    out.torsoRotX = 0.15 * c;
+    out.chestRotX = 0.2 * c;
+    out.lShoX = 0.6 * s;
+    out.rShoX = -0.6 * s;
+    out.lShoZ = -drop + 0.8;
+    out.rShoZ = drop - 0.8;
+    out.lElbBend = 0.3;
+    out.rElbBend = 0.3;
+    out.lHipX = 0.3 * s;
+    out.rHipX = -0.3 * s;
+    out.stretchY = 1;
+  } else if (action === 'land') {
+    const progress = Math.max(0, Math.sin(angle));
+    out.rootLiftY = -0.25 * progress;
+    out.torsoRotX = 0.3 * progress;
+    out.chestRotX = 0.15 * progress;
+    out.lHipX = -0.8 * progress;
+    out.rHipX = -0.8 * progress;
+    out.lKneeX = 0.8 * progress;
+    out.rKneeX = 0.8 * progress;
+    out.lFootX = 0.5 * progress;
+    out.rFootX = 0.5 * progress;
+    out.lElbBend = 0.45;
+    out.rElbBend = 0.45;
+    out.stretchY = 1;
+  } else if (action === 'dash') {
+    const progress = angle / (Math.PI * 2);
+    out.rootOffsetX = -0.5 * progress * (1 - progress) * 4;
+    out.torsoRotX = 0.6 * progress;
+    out.chestRotX = 0.7 * progress;
+    out.lShoX = -0.8 * progress;
+    out.rShoX = -0.8 * progress;
+    out.lElbBend = 0.3;
+    out.rElbBend = 0.3;
+    out.lHipX = 1.2 * progress * (1 - progress) * 4;
+    out.rHipX = 1.2 * progress * (1 - progress) * 4;
+    out.lKneeX = Math.max(0, 1.2 * progress * (1 - progress) * 4);
+    out.rKneeX = Math.max(0, 1.2 * progress * (1 - progress) * 4);
+    out.stretchY = 1;
+  } else if (action === 'interact') {
+    const progress = angle / (Math.PI * 2);
+    const s = Math.sin(angle);
+    out.torsoRotX = progress < 0.5 ? -0.2 * Math.sin(progress * Math.PI * 2) : -0.2 * Math.sin((1 - (progress - 0.5) * 2) * Math.PI);
+    out.torsoRotY = progress < 0.5 ? 0.2 * Math.sin(progress * Math.PI * 2) : 0.2 * Math.sin((1 - (progress - 0.5) * 2) * Math.PI);
+    out.rShoX = progress < 0.3 ? -0.3 * Math.sin(progress * Math.PI / 0.3) : (progress < 0.7 ? -0.3 : -0.3 * Math.sin((progress - 0.7) * Math.PI / 0.3));
+    out.rShoZ = progress < 0.3 ? drop - 0.8 * Math.sin(progress * Math.PI / 0.3) : (progress < 0.7 ? drop - 0.8 : drop - 0.8 * Math.sin((1 - (progress - 0.7) / 0.3) * Math.PI));
+    out.rElbBend = progress < 0.7 ? 0.5 * Math.sin(progress * Math.PI / 0.7) : 0.5 * Math.sin((1 - (progress - 0.7) / 0.3) * Math.PI);
+    out.lShoX = -0.1;
+    out.lElbBend = 0.8;
+    out.lHipX = -0.1;
+    out.rHipX = 0.1;
+    out.stretchY = 1;
   }
 
   return out;

@@ -552,11 +552,11 @@ export function updateCharacterRigAnimation(
 
   const amp = settings.exaggeration;
   const physicsBoost = settings.physicsEnabled ? 0.35 : 0;
-  const followLag = ((settings.followThrough / 100) + physicsBoost) * 0.65;
-  const arcScale = 0.5 + (settings.arcs / 100) * 0.9;
-  const solid = (settings.solidDrawing / 100) * 0.25;
-  const squash = ((settings.squashStretch / 100) + (settings.physicsEnabled ? 0.25 : 0)) * 0.22;
-  const antic = (settings.anticipation / 100) * 0.28;
+  const followLag = (((settings.followThrough ?? 50) / 100) + physicsBoost) * 0.65;
+  const arcScale = 0.5 + ((settings.arcs ?? 50) / 100) * 0.9;
+  const solid = ((settings.solidDrawing ?? 50) / 100) * 0.25;
+  const squash = (((settings.squashStretch ?? 50) / 100) + (settings.physicsEnabled ? 0.25 : 0)) * 0.22;
+  const antic = ((settings.anticipation ?? 50) / 100) * 0.28;
 
   // Appeal posture offsets
   const appealChestLean =
@@ -611,7 +611,7 @@ export function updateCharacterRigAnimation(
     rElbX = -1.25;
     torsoRotY = s * (0.24 + solid);
     stretchY = 1 + c * squash * 0.65;
-  } else if (settings.action === 'jump' || settings.action === 'arc_leap') {
+  } else if (settings.action === 'jump') {
     const jumpArc = Math.max(0, Math.sin(angle));
     const dip = Math.min(0, Math.sin(angle)) * (0.35 + antic);
     pelvisY = 1.05 + jumpArc * 0.72 * amp * arcScale + dip * 0.35;
@@ -623,7 +623,7 @@ export function updateCharacterRigAnimation(
     lShoX = -jumpArc * 2.1 * arcScale + dip * 0.6;
     rShoX = -jumpArc * 2.1 * arcScale + dip * 0.6;
     stretchY = 1 + (jumpArc - Math.abs(dip)) * squash;
-  } else if (settings.action === 'punch') {
+  } else if (settings.action === 'hit') {
     const thrust = Math.pow(Math.max(0, Math.sin(angle)), 2);
     const windUp = Math.min(0, Math.sin(angle)) * (0.6 + antic);
     torsoRotY = -windUp * 0.65 + thrust * 0.75 * amp;
@@ -633,7 +633,7 @@ export function updateCharacterRigAnimation(
     lElbX = -1.3;
     pelvisY = 1.02 - thrust * 0.06;
     stretchY = 1 + thrust * squash * 0.5;
-  } else if (settings.action === 'wave') {
+  } else if (settings.action === 'interact') {
     rShoZ = 2.25 + Math.sin(angle * 2) * 0.35 * amp * arcScale;
     rElbX = -0.65 + Math.cos(angle * 2 - followLag) * 0.45 * amp;
     torsoRotX += -0.05;

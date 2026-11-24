@@ -1,6 +1,7 @@
 mod blender_py;
 mod glb;
 
+use crate::glb::AnimationClipType;
 use glam::{EulerRot, Mat4, Quat, Vec3};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -265,11 +266,38 @@ pub fn evaluate_scene_frame(scene_data: JsValue, time_sec: f32) -> Result<JsValu
 }
 
 #[wasm_bindgen]
-pub fn generate_rigged_animation_glb(scene_data: JsValue) -> Result<Vec<u8>, JsValue> {
+pub fn generate_rigged_animation_glb(scene_data: JsValue, clip_type: Option<String>) -> Result<Vec<u8>, JsValue> {
     let scene: SceneData = serde_wasm_bindgen::from_value(scene_data)
         .map_err(|err| JsValue::from_str(&format!("SceneData inválido para GLB: {err}")))?;
 
-    glb::build_rigged_animation_glb(&scene).map_err(|err| JsValue::from_str(&err))
+    let clip = if let Some(clip_str) = clip_type {
+        match clip_str.to_lowercase().as_str() {
+            "idle" => AnimationClipType::Idle,
+            "walk" => AnimationClipType::Walk,
+            "run" => AnimationClipType::Run,
+            "jump" => AnimationClipType::Jump,
+            "slash" => AnimationClipType::Slash,
+            "hit" => AnimationClipType::Hit,
+            "death" => AnimationClipType::Death,
+            "block" => AnimationClipType::Block,
+            "fall" => AnimationClipType::Fall,
+            "land" => AnimationClipType::Land,
+            "dash" => AnimationClipType::Dash,
+            "interact" => AnimationClipType::Interact,
+            _ => AnimationClipType::Idle,
+        }
+    } else {
+        AnimationClipType::Idle
+    };
+
+    glb::build_rigged_animation_glb_for_clip(&scene, clip).map_err(|err| JsValue::from_str(&err))
+}
+
+#[wasm_bindgen]
+pub fn get_animation_clip_types() -> Result<JsValue, JsValue> {
+    let clips: Vec<&str> = AnimationClipType::all().iter().map(|c| c.name()).collect();
+    serde_wasm_bindgen::to_value(&clips)
+        .map_err(|err| JsValue::from_str(&format!("Falha ao serializar clip types: {err}")))
 }
 
 #[wasm_bindgen]

@@ -112,16 +112,18 @@ export interface SculptSettings {
 }
 
 export type AnimationActionCycle =
+  | 'idle'
   | 'walk'
   | 'run'
   | 'jump'
-  | 'punch'
-  | 'wave'
-  | 'idle'
-  | 'arc_leap'
   | 'slash'
-  | 'aim'
-  | 'dance';
+  | 'hit'
+  | 'death'
+  | 'block'
+  | 'fall'
+  | 'land'
+  | 'dash'
+  | 'interact';
 
 export type AutoRigPreset = 'biped' | 'flex_spine';
 
@@ -148,15 +150,21 @@ export type HumanoidJointMarkerId =
 
 export type TimelineViewMode = 'strips' | 'graph' | 'keys';
 
+export const BLEND_MODES = ['replace', 'add', 'multiply', 'combine'] as const;
+export const EXTRAPOLATION_MODES = ['hold', 'repeat', 'nothing'] as const;
+
 export interface NlaTimelineStrip {
   id: string;
-  trackId: 'base';
+  trackId: string;
   label: string;
   sourceType: 'procedural' | 'clip';
   actionCycle?: AnimationActionCycle;
   clipIndex?: number;
   startFrame: number;
   endFrame: number;
+  muted?: boolean;
+  blendMode?: typeof BLEND_MODES[number];
+  extrapolation?: typeof EXTRAPOLATION_MODES[number];
 }
 
 export interface AnimationSettings {
@@ -182,6 +190,18 @@ export interface AnimationSettings {
   showBones: boolean;
   exaggeration: number;
   nlaStrips: NlaTimelineStrip[];
+  // Animation principles / advanced settings
+  easing?: 'linear' | 'slow_in_out' | 'snap_out' | 'elastic';
+  staging?: 'silhouette' | 'default' | 'rim';
+  method?: string;
+  physicsEnabled?: boolean;
+  followThrough?: number;
+  arcs?: number;
+  solidDrawing?: number;
+  squashStretch?: number;
+  anticipation?: number;
+  appeal?: 'heroic' | 'villain' | 'cartoon' | 'none';
+  secondaryAction?: 'breathing' | 'look_around' | 'sway' | 'none';
 }
 
 export type GraphicsBackend = 'webgl2' | 'webgpu';

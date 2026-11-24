@@ -24,6 +24,8 @@ import {
   loadStartupModelFile,
   saveStartupModelFile,
 } from './utils/startupModelStore';
+import { useSystemStore } from './stores/SystemStore';
+import { downloadBlender53Package } from './services/blenderZipExporter';
 import type {
   AnimationActionCycle,
   AnimationSettings,
@@ -57,6 +59,13 @@ const MULTI_CLIP_EXPORT_ACTIONS: AnimationActionCycle[] = [
   'run',
   'jump',
   'slash',
+  'hit',
+  'death',
+  'block',
+  'fall',
+  'land',
+  'dash',
+  'interact',
 ];
 
 const DEFAULT_WEIGHT_PAINT: WeightPaintSettings = {
@@ -378,17 +387,17 @@ export default function App() {
   }, [settings.sceneMode]);
 
   const handleUndo = useCallback(() => {
-    const res = threeEngineRef.current?.undoScene();
-    if (res?.ok) {
-      showNotice(`Desfeito: ${res.label}`);
-    }
+    const { undo, canUndo } = useSystemStore.getState();
+    if (!canUndo()) return;
+    undo();
+    showNotice('Desfeito (Ctrl+Z)');
   }, [showNotice]);
 
   const handleRedo = useCallback(() => {
-    const res = threeEngineRef.current?.redoScene();
-    if (res?.ok) {
-      showNotice(`Refeito: ${res.label}`);
-    }
+    const { redo, canRedo } = useSystemStore.getState();
+    if (!canRedo()) return;
+    redo();
+    showNotice('Refeito (Ctrl+Y)');
   }, [showNotice]);
 
   const handleDeleteSelected = useCallback(() => {
@@ -1274,19 +1283,17 @@ export default function App() {
       try {
         setExportingBlenderZip(true);
         const chosenProfile = profile ?? settings.animation.exportProfile;
-        const blob = await threeEngineRef.current.exportBlenderCompleteZip(
-          chosenProfile,
-          true,
-          multiClipExport ? MULTI_CLIP_EXPORT_ACTIONS : undefined
+        await downloadBlender53Package(
+          threeEngineRef.current,
+          cameraQuaternion,
+          {
+            profile: chosenProfile,
+            includeTransparentPreview: true,
+            multiActions: multiClipExport ? MULTI_CLIP_EXPORT_ACTIONS : undefined,
+          }
         );
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `vertice-studio-${chosenProfile}-blender53-completo.zip`;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
         showNotice(
-          `ZIP Completo Blender 5.3+ (.glb + .py + .json + PNG transp.) exportado!`
+          `ZIP Completo Blender 5.3+ (.glb + cena_config.json + abrir_no_blender.py) exportado!`
         );
       } catch {
         showNotice('Não foi possível gerar o pacote .ZIP completo.');
@@ -1294,7 +1301,7 @@ export default function App() {
         setExportingBlenderZip(false);
       }
     },
-    [exportingBlenderZip, multiClipExport, settings.animation.exportProfile, showNotice]
+    [exportingBlenderZip, multiClipExport, settings.animation.exportProfile, showNotice, cameraQuaternion]
   );
 
   const handleCaptureFrame = useCallback(

@@ -66,17 +66,19 @@ interface AnimationSidebarProps {
   onClose: () => void;
 }
 
-const ACTION_CYCLES: Array<{ id: AnimationActionCycle; label: string; spanFull?: boolean }> = [
-  { id: 'walk', label: 'Caminhar' },
-  { id: 'run', label: 'Correr' },
-  { id: 'jump', label: 'Pular' },
-  { id: 'punch', label: 'Soco' },
-  { id: 'slash', label: 'Espada' },
-  { id: 'aim', label: 'Mira' },
-  { id: 'wave', label: 'Acenar' },
-  { id: 'dance', label: 'Dançar' },
-  { id: 'idle', label: 'Idle' },
-  { id: 'arc_leap', label: 'Salto / Arco Parabólico', spanFull: true },
+const ACTION_CYCLES: Array<{ id: AnimationActionCycle; label: string; spanFull?: boolean; loop?: boolean }> = [
+  { id: 'idle', label: 'Idle (Loop)', loop: true },
+  { id: 'walk', label: 'Caminhar (Loop)', loop: true },
+  { id: 'run', label: 'Correr (Loop)', loop: true },
+  { id: 'jump', label: 'Pular', loop: false },
+  { id: 'slash', label: 'Espada', loop: false },
+  { id: 'hit', label: 'Hit (Impacto)', loop: false },
+  { id: 'death', label: 'Morte', loop: false },
+  { id: 'block', label: 'Bloqueio (Loop)', loop: true },
+  { id: 'fall', label: 'Queda (Loop)', loop: true },
+  { id: 'land', label: 'Pouso', loop: false },
+  { id: 'dash', label: 'Dash', loop: false },
+  { id: 'interact', label: 'Interagir', loop: false },
 ];
 
 const PROP_SOCKETS: Array<{ id: PropSocketType; label: string }> = [

@@ -6,6 +6,9 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
@@ -81,6 +84,7 @@ import {
   updateCharacterRigAnimation,
 } from './sculptAndRigBuilder';
 import { GLSL_HARMONIC_FRAGMENT, GLSL_HARMONIC_VERTEX } from './shaders';
+import { ResourceTracker, globalResourceTracker } from './ResourceTracker';
 
 type SceneUndoCommand =
   | {
@@ -659,6 +663,9 @@ export class ThreeStudioEngine {
   private disposables: Array<{ dispose: () => void }> = [];
   private gltfDisposables: Array<{ dispose: () => void }> = [];
   private envMap: THREE.Texture | null = null;
+  private resourceTracker: ResourceTracker;
+  private dracoLoader: DRACOLoader | null = null;
+  private ktx2Loader: KTX2Loader | null = null;
 
   // Loop & state
   private frameId = 0;
@@ -674,6 +681,7 @@ export class ThreeStudioEngine {
   private autoQuality = true;
   private qualityScale = 1;
   private cameraTransitionActive = false;
+  private currentMetrics: RenderMetrics | null = null;
 
   constructor(
     container: HTMLElement,
@@ -702,6 +710,13 @@ export class ThreeStudioEngine {
     this.animFrameFloat = initialSettings.animation.currentFrame;
     this.lastReportedAnimFrame = initialSettings.animation.currentFrame;
 
+    this.resourceTracker = globalResourceTracker;
+
+    // Initialize Draco loader for compressed meshes
+    this.dracoLoader = new DRACOLoader();
+    this.dracoLoader.setDecoderPath('/draco/');
+    this.dracoLoader.setDecoderConfig({ type: 'js' });
+
     const probe = detectSoftwareWebGL();
     this.isSoftwareGl = probe.isSoftware;
     this.gpuRendererString = probe.renderer;
@@ -721,6 +736,11 @@ export class ThreeStudioEngine {
     this.renderer.shadowMap.enabled = !this.isSoftwareGl;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.info.autoReset = false;
+
+    // Initialize KTX2 loader for compressed textures (after renderer is created)
+    this.ktx2Loader = new KTX2Loader();
+    this.ktx2Loader.setTranscoderPath('/basis/');
+    (this.ktx2Loader as KTX2Loader & { detectGPURenderer?: (renderer: THREE.WebGLRenderer) => void }).detectGPURenderer?.(this.renderer);
 
     const rect = this.container.getBoundingClientRect();
     const w = Math.max(1, rect.width);
@@ -2847,10 +2867,16 @@ export class ThreeStudioEngine {
         });
 
         const loader = new GLTFLoader(manager);
+        if (this.dracoLoader) loader.setDRACOLoader(this.dracoLoader);
+        if (this.ktx2Loader) loader.setKTX2Loader(this.ktx2Loader);
+        loader.setMeshoptDecoder(MeshoptDecoder);
         const entryUrl = blobUrlMap.get(entryKey)!;
         gltf = await loader.loadAsync(entryUrl);
       } else {
         const loader = new GLTFLoader();
+        if (this.dracoLoader) loader.setDRACOLoader(this.dracoLoader);
+        if (this.ktx2Loader) loader.setKTX2Loader(this.ktx2Loader);
+        loader.setMeshoptDecoder(MeshoptDecoder);
         gltf = await new Promise<GLTF>((resolve, reject) => {
           loader.parse(
             buffer,
@@ -3400,8 +3426,26 @@ export class ThreeStudioEngine {
     rigMap: SkeletonRigMap,
     actionOverride?: AnimationActionCycle
   ): THREE.AnimationClip {
+    const action = actionOverride ?? this.settings.animation.action;
+    
+    // Duration per action (matches Rust side)
+    const actionDurations: Record<AnimationActionCycle, number> = {
+      idle: 2.0,
+      walk: 1.0,
+      run: 0.66,
+      jump: 1.2,
+      slash: 0.8,
+      hit: 0.4,
+      death: 1.2,
+      block: 1.0,
+      fall: 0.6,
+      land: 0.45,
+      dash: 0.5,
+      interact: 1.2,
+    };
+    
     const fps = 30;
-    const duration = 1.6;
+    const duration = actionDurations[action] ?? 1.6;
     const sampleCount = Math.round(fps * duration) + 1;
     const times: number[] = [];
     const rotMap = new Map<string, number[]>();
@@ -3417,7 +3461,7 @@ export class ThreeStudioEngine {
     const animSettings = {
       ...this.settings.animation,
       enabled: true,
-      action: actionOverride ?? this.settings.animation.action,
+      action,
     };
     const trackRootTravel =
       !animSettings.inPlace && (animSettings.action === 'walk' || animSettings.action === 'run');
@@ -3862,6 +3906,9 @@ export class ThreeStudioEngine {
 
     const buffer = await file.arrayBuffer();
     const loader = new GLTFLoader();
+    if (this.dracoLoader) loader.setDRACOLoader(this.dracoLoader);
+    if (this.ktx2Loader) loader.setKTX2Loader(this.ktx2Loader);
+    loader.setMeshoptDecoder(MeshoptDecoder);
     let parsedClips: THREE.AnimationClip[] = [];
 
     if (/\.zip$/i.test(file.name)) {
@@ -5244,7 +5291,7 @@ export class ThreeStudioEngine {
         const phase = phaseRaw * Math.PI * 2 * patrol.stepMultiplier;
         const bounce = eff.enabled
           ? Math.abs(Math.sin(phase * (eff.action === 'run' ? 2 : 1))) *
-            (eff.action === 'jump' || eff.action === 'arc_leap' ? 0.55 : 0.14) *
+            (eff.action === 'jump' ? 0.55 : 0.14) *
             eff.exaggeration
           : 0;
         const cosBaseY = Math.cos(this.gltfBaseRot.y);
@@ -6190,7 +6237,7 @@ export class ThreeStudioEngine {
           const phase = phaseRaw * Math.PI * 2 * patrol.stepMultiplier;
           const bounce = eff.enabled
             ? Math.abs(Math.sin(phase * (eff.action === 'run' ? 2 : 1))) *
-              (eff.action === 'jump' || eff.action === 'arc_leap' ? 0.55 : 0.14) *
+              (eff.action === 'jump' ? 0.55 : 0.14) *
               eff.exaggeration
             : 0;
 
@@ -6373,6 +6420,17 @@ export class ThreeStudioEngine {
         gpuRendererString: this.gpuRendererString,
         lodTelemetry,
       });
+      this.currentMetrics = {
+        fps: this.currentFps,
+        frameTimeMs,
+        drawCalls: this.renderer.info.render.calls,
+        triangles: this.renderer.info.render.triangles,
+        activeBackendLabel: this.isSoftwareGl ? 'WebGL2 Software' : 'WebGL2 Acelerado',
+        isNativeWebGPUActive: false,
+        isSoftwareRenderer: this.isSoftwareGl,
+        gpuRendererString: this.gpuRendererString,
+        lodTelemetry,
+      };
       this.fpsFrames = 0;
       this.fpsAccum = 0;
     }
@@ -6406,6 +6464,51 @@ export class ThreeStudioEngine {
     this.tick();
   };
 
+  // Public getters for Blender export integration
+  public getLoadedModelName(): string | null {
+    return this.loadedModelName;
+  }
+
+  public getSettings(): RenderSettings {
+    return { ...this.settings };
+  }
+
+  public getLodTelemetry(): RenderMetrics['lodTelemetry'] {
+    return { ...this.currentMetrics?.lodTelemetry } as RenderMetrics['lodTelemetry'];
+  }
+
+  public getCamera(): THREE.PerspectiveCamera {
+    return this.camera;
+  }
+
+  public getControls(): OrbitControls {
+    return this.controls;
+  }
+
+  public getMeshBoundsForExport(): { positions: number[] } | null {
+    if (!this.loadedGltfRoot) return null;
+    const positions: number[] = [];
+    this.loadedGltfRoot.traverse((obj) => {
+      if ((obj as THREE.Mesh).isMesh) {
+        const mesh = obj as THREE.Mesh;
+        if (mesh.geometry?.attributes?.position) {
+          const posAttr = mesh.geometry.attributes.position;
+          const worldPos = new THREE.Vector3();
+          for (let i = 0; i < posAttr.count; i++) {
+            worldPos.fromBufferAttribute(posAttr, i);
+            mesh.localToWorld(worldPos);
+            positions.push(worldPos.x, worldPos.y, worldPos.z);
+          }
+        }
+      }
+    });
+    return positions.length > 0 ? { positions } : null;
+  }
+
+  public getCurrentMetrics(): RenderMetrics | null {
+    return this.currentMetrics;
+  }
+
   public destroy(): void {
     this.disposed = true;
     this.stopTurntableRecording();
@@ -6432,6 +6535,11 @@ export class ThreeStudioEngine {
     for (const item of this.disposables) {
       item.dispose();
     }
+    // Dispose draco/ktx2 loaders
+    this.dracoLoader?.dispose();
+    this.ktx2Loader?.dispose();
+    // Trigger resource tracker cleanup for any remaining tracked resources
+    this.resourceTracker.triggerContextLost();
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }
