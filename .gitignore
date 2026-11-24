@@ -12,3 +12,12 @@ wasm-core/target
 
 .wrangler/
 log-verificacao.txt
+
+# Temporarios e cache
+*.log
+*.bak
+*.tmp
+.wrangler/
+dist/
+src/wasm/
+wasm-core/target/
