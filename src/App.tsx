@@ -1901,6 +1901,28 @@ export default function App() {
               onExportSpriteSheetZip={(step, t) => void handleExportSpriteSheetZip(step, t)}
               onInsertRiggedHumanoid={() => handleInsertRiggedHumanoid(false)}
               onUpdateAnimation={handleUpdateAnimation}
+              onAddNlaStrip={(label, sourceType, actionCycle, clipIndex, startAt) => {
+                const strips = settings.animation.nlaStrips ?? [];
+                const lastEnd = strips.reduce((acc: number, s) => Math.max(acc, s.endFrame), 0);
+                const startFrame = Math.max(1, startAt ?? (lastEnd > 0 ? lastEnd + 1 : settings.animation.frameStart ?? 1));
+                const endFrame = startFrame + 24;
+                const newStrip = {
+                  id: `strip_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                  trackId: 'base',
+                  label,
+                  sourceType,
+                  actionCycle,
+                  clipIndex,
+                  startFrame,
+                  endFrame,
+                };
+                handleUpdateAnimation({
+                  nlaStrips: [...strips, newStrip],
+                  frameEnd: Math.max(settings.animation.frameEnd ?? 60, endFrame),
+                  cycleMode: 'full_cycle',
+                  enabled: true,
+                });
+              }}
               onResetAnimation={handleResetAnimation}
               timelineOpen={!timelineCollapsed}
               onClose={() => setLeftPanelOpen(false)}
@@ -2020,6 +2042,28 @@ export default function App() {
               onToggleRecordWebm={handleToggleRecordWebm}
               onOpenRetargetPicker={() => timelineRetargetInputRef.current?.click()}
               onNotice={showNotice}
+              onAddNlaStrip={(label, sourceType, actionCycle, clipIndex, startAt) => {
+                const strips = settings.animation.nlaStrips ?? [];
+                const lastEnd = strips.reduce((acc: number, s) => Math.max(acc, s.endFrame), 0);
+                const startFrame = Math.max(1, startAt ?? (lastEnd > 0 ? lastEnd + 1 : settings.animation.frameStart ?? 1));
+                const endFrame = startFrame + 24;
+                const newStrip = {
+                  id: `strip_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                  trackId: 'base',
+                  label,
+                  sourceType,
+                  actionCycle,
+                  clipIndex,
+                  startFrame,
+                  endFrame,
+                };
+                handleUpdateAnimation({
+                  nlaStrips: [...strips, newStrip],
+                  frameEnd: Math.max(settings.animation.frameEnd ?? 60, endFrame),
+                  cycleMode: 'full_cycle',
+                  enabled: true,
+                });
+              }}
             />
           </>
         ) : (

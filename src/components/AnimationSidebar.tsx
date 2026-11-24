@@ -60,6 +60,13 @@ interface AnimationSidebarProps {
   onExportSpriteSheetZip?: (step?: number, transparentOverride?: boolean) => void;
   onInsertRiggedHumanoid?: () => void;
   onUpdateAnimation: (patch: Partial<AnimationSettings>) => void;
+  onAddNlaStrip?: (
+    label: string,
+    sourceType: 'procedural' | 'clip',
+    actionCycle?: AnimationActionCycle,
+    clipIndex?: number,
+    startAt?: number,
+  ) => void;
   onResetAnimation: () => void;
   timelineOpen?: boolean;
   onClose: () => void;
@@ -126,6 +133,7 @@ export function AnimationSidebar({
   onExportFramesZip,
   onExportSpriteSheetZip,
   onInsertRiggedHumanoid,
+  onAddNlaStrip,
   onUpdateAnimation,
   onResetAnimation,
   timelineOpen = false,
@@ -691,15 +699,22 @@ export function AnimationSidebar({
                     key={act.id}
                     type="button"
                     aria-pressed={active}
-                    onClick={() =>
+                    onClick={() => {
                       onUpdateAnimation({
                         action: act.id,
                         poseSource: 'procedural',
                         enabled: true,
                         playing: true,
                         cycleMode: 'full_cycle',
-                      })
-                    }
+                      });
+                      onAddNlaStrip?.(
+                        act.label,
+                        'procedural',
+                        act.id,
+                        undefined,
+                        animation.currentFrame,
+                      );
+                    }}
                     className={`h-8 px-2 text-[11px] font-medium rounded-lg border whitespace-nowrap cursor-pointer flex items-center justify-center ${
                       act.spanFull ? 'col-span-3' : ''
                     } ${

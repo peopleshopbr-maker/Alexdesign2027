@@ -57,6 +57,13 @@ interface AnimationTimelineDockProps {
   onToggleRecordWebm: () => void;
   onOpenRetargetPicker: () => void;
   onNotice: (msg: string) => void;
+  onAddNlaStrip?: (
+    label: string,
+    sourceType: 'procedural' | 'clip',
+    actionCycle?: AnimationActionCycle,
+    clipIndex?: number,
+    startAt?: number,
+  ) => void;
 }
 
 const STRIP_PALETTE_ACTIONS: Array<{ id: AnimationActionCycle; label: string; color: string }> = [
@@ -1597,7 +1604,16 @@ export function AnimationTimelineDock({
               </button>
               <button
                 onClick={() => {
-                  setTracks((prev) => prev.filter((t) => t.id !== contextMenu.data.id));
+                  if (contextMenu.data.id === 'base') {
+                    setContextMenu(null);
+                    onNotice('A pista base não pode ser removida.');
+                    return;
+                  }
+                  const nextTracks = tracks.filter((t) => t.id !== contextMenu.data.id);
+                  setTracks(nextTracks);
+                  if (nextTracks.length === 0) {
+                    setTracks((prev) => [...prev, { id: 'base', name: 'Base', visible: true, solo: false, mute: false, blendMode: 'replace', extrapolation: 'hold', strips: [] }]);
+                  }
                   onUpdateAnimation({ nlaStrips: strips.filter((s) => s.trackId !== contextMenu.data.id) });
                   setContextMenu(null);
                   onNotice(`Pista "${contextMenu.data.name}" removida.`);
