@@ -63,9 +63,8 @@ import {
   refreshWeightHeatmapOnRoot,
   resetSkeletonToRestPose,
   retargetAnimationClipToRig,
-  type CustomJointMarkers,
-  type SkeletonRigMap,
 } from './autoRiggingAndRetarget';
+import type { CustomJointMarkers, SkeletonRigMap } from '../types/graphics';
 import {
   createProceduralTemplateMeshes,
   createUvCheckerTexture,
@@ -75,7 +74,6 @@ import {
 import { detectSoftwareWebGL } from './gpuProbe';
 import {
   applyMeshDeformation,
-  applySculptBrushStroke,
   type ArticulatedRig,
   createArticulatedCharacterRig,
   createPrimitiveSculptGeometry,
@@ -618,7 +616,6 @@ export class ThreeStudioEngine {
   private gltfBasePos = new THREE.Vector3();
   private gltfBaseRot = new THREE.Euler();
   private gltfBaseScale = new THREE.Vector3(1, 1, 1);
-  private gltfSyncedToSculpt = false;
   private gltfRigMap: SkeletonRigMap | null = null;
   private gltfSkeletonHelper: THREE.SkeletonHelper | null = null;
   private gltfIsAutoRigged = false;
@@ -3071,7 +3068,6 @@ export class ThreeStudioEngine {
     this.loadedGltfRoot = root;
     this.loadedModelName = modelName;
     this.loadedMeshCount = meshCount;
-    this.gltfSyncedToSculpt = false;
     this.gltfIsAutoRigged = isAutoRigged;
     this.activeHeroGltfGroup.add(root);
 
@@ -3256,7 +3252,6 @@ export class ThreeStudioEngine {
       true,
       rigOut.disposables
     );
-    this.gltfSyncedToSculpt = true;
     return { name: modelName, boneCount: stats.boneCount };
   }
 
@@ -3401,7 +3396,6 @@ export class ThreeStudioEngine {
     });
 
     if (firstAdded) {
-      this.gltfSyncedToSculpt = true;
       this.selectSculptMesh(firstAdded);
       this.notifySculptState();
       this.notifyOutliner();
@@ -3414,7 +3408,6 @@ export class ThreeStudioEngine {
     this.lodDefaultContainer.visible = true;
     this.loadedModelName = null;
     this.loadedMeshCount = 0;
-    this.gltfSyncedToSculpt = false;
     this.clearSelection();
     this.syncSceneModeVisibility();
     this.syncViewportShading();

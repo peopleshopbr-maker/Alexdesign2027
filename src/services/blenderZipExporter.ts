@@ -1,10 +1,7 @@
 import JSZip from 'jszip';
-import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
-import * as THREE from 'three';
 import { ThreeStudioEngine } from '../graphics/threeStudioEngine';
-import { useSystemStore } from '../stores/SystemStore';
 import { analyzeMeshBoundsWasm, type MeshAnalysisInput } from './rustEngine';
-import type { RenderSettings, SceneMode, RigExportProfile, AnimationActionCycle, RenderMetrics, LodTelemetry } from '../types/graphics';
+import type { RenderSettings, SceneMode, RigExportProfile, AnimationActionCycle } from '../types/graphics';
 
 export interface BlenderExportConfig {
   profile?: RigExportProfile;
@@ -66,17 +63,6 @@ function threeToBlenderCoords(v: [number, number, number]): [number, number, num
     Number.isFinite(v[0]) ? v[0] : 0,
     Number.isFinite(v[2]) ? -v[2] : 0,
     Number.isFinite(v[1]) ? v[1] : 0,
-  ];
-}
-
-function threeQuaternionToBlenderEuler(q: [number, number, number, number]): [number, number, number] {
-  const threeQuat = new THREE.Quaternion(q[0], q[1], q[2], q[3]);
-  const euler = new THREE.Euler();
-  euler.setFromQuaternion(threeQuat, 'YXZ');
-  return [
-    THREE.MathUtils.radToDeg(euler.x),
-    THREE.MathUtils.radToDeg(euler.z),
-    -THREE.MathUtils.radToDeg(euler.y),
   ];
 }
 
@@ -143,7 +129,6 @@ function buildSceneConfigJson(
   engine: ThreeStudioEngine,
   cameraQuat: [number, number, number, number],
   rustAnalysis: RustAnalysisConfig | undefined,
-  config: BlenderExportConfig
 ): SceneConfigJson {
   const settings = engine.getSettings?.() ?? ({} as RenderSettings);
   const lodTelemetry = engine.getLodTelemetry?.() ?? {
@@ -607,7 +592,7 @@ export async function exportBlender53Package(
   const rustAnalysis = await getRustAnalysis(engine);
 
   // 4. Build scene config JSON
-  const sceneConfig = buildSceneConfigJson(engine, cameraQuaternion, rustAnalysis, config);
+  const sceneConfig = buildSceneConfigJson(engine, cameraQuaternion, rustAnalysis);
   const configJson = JSON.stringify(sceneConfig, null, 2);
 
   // 5. Build Python script

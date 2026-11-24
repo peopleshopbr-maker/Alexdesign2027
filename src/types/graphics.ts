@@ -149,6 +149,48 @@ export type HumanoidJointMarkerId =
   | 'ankleL'
   | 'ankleR';
 
+export type CustomJointMarkers = Record<HumanoidJointMarkerId, import('three').Vector3>;
+
+export type HumanoidBoneRole =
+  | 'hips'
+  | 'spine'
+  | 'chest'
+  | 'neck'
+  | 'head'
+  | 'leftShoulder'
+  | 'leftUpperArm'
+  | 'leftForeArm'
+  | 'leftHand'
+  | 'rightShoulder'
+  | 'rightUpperArm'
+  | 'rightForeArm'
+  | 'rightHand'
+  | 'leftThigh'
+  | 'leftShin'
+  | 'leftFoot'
+  | 'rightThigh'
+  | 'rightShin'
+  | 'rightFoot';
+
+export interface BoneRestEntry {
+  bone: import('three').Bone;
+  restLocalPos: import('three').Vector3;
+  restLocalQuat: import('three').Quaternion;
+  restWorldPos: import('three').Vector3;
+  restParentWorldQuat: import('three').Quaternion;
+  restParentWorldQuatInv: import('three').Quaternion;
+}
+
+export interface SkeletonRigMap {
+  bones: BoneRestEntry[];
+  roles: Partial<Record<HumanoidBoneRole, BoneRestEntry>>;
+  spineChain: BoneRestEntry[];
+  tPoseArmDropRad: number;
+  leftForeArmBendAxis: import('three').Vector3;
+  rightForeArmBendAxis: import('three').Vector3;
+  boneCount: number;
+}
+
 export type TimelineViewMode = 'strips' | 'graph' | 'keys';
 
 export const BLEND_MODES = ['replace', 'add', 'multiply', 'combine'] as const;

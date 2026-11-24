@@ -7,7 +7,6 @@ import {
   Check,
   Circle,
   Clock,
-  Copy,
   CopyPlus,
   Diamond,
   FastForward,
@@ -18,8 +17,6 @@ import {
   KeyRound,
   Layers,
   Mic,
-  Minus,
-  Monitor,
   Pause,
   Play,
   Plus,
@@ -33,18 +30,12 @@ import {
   Square,
   Trash2,
   Undo2,
-  Volume2,
   VolumeX,
   Zap,
   Eye,
   EyeOff,
-  Lock,
-  Unlock,
-  MoveHorizontal,
-  Maximize2,
-  Minimize2,
 } from 'lucide-react';
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type {
   AnimationActionCycle,
   AnimationSettings,
@@ -144,10 +135,8 @@ export function AnimationTimelineDock({
   const [tracks, setTracks] = useState<NlaTrack[]>([
     { id: 'base', name: 'Base', visible: true, solo: false, mute: false, blendMode: 'replace', extrapolation: 'hold', strips: animation.nlaStrips ?? [] },
   ]);
-  const [autoScroll, setAutoScroll] = useState(true);
   const [showTimecode, setShowTimecode] = useState(true);
   const [selectedKeyframe, setSelectedKeyframe] = useState<{ frame: number; channel: string; interpolation: typeof INTERPOLATION_TYPES[number]; tangentIn: typeof TANGENT_TYPES[number]; tangentOut: typeof TANGENT_TYPES[number] } | null>(null);
-  const [graphTangentEdit, setGraphTangentEdit] = useState<{ frame: number; handle: 'in' | 'out'; dragging: boolean } | null>(null);
 
   const laneScrollRef = useRef<HTMLDivElement>(null);
   const dragScrubRef = useRef(false);
@@ -230,14 +219,14 @@ export function AnimationTimelineDock({
 
   // Auto-scroll when playing
   useEffect(() => {
-    if (!animation.playing || !autoScroll || !laneScrollRef.current) return;
+    if (!animation.playing || !laneScrollRef.current) return;
     const playheadX = (animation.currentFrame - 1) * pxPerFrame;
     const el = laneScrollRef.current;
     const viewportCenter = el.scrollLeft + el.clientWidth / 2;
     if (Math.abs(playheadX - viewportCenter) > el.clientWidth * 0.3) {
       el.scrollLeft = Math.max(0, playheadX - el.clientWidth / 2);
     }
-  }, [animation.playing, animation.currentFrame, autoScroll, pxPerFrame]);
+  }, [animation.playing, animation.currentFrame, pxPerFrame]);
 
   // Close context menu on click outside
   useEffect(() => {
@@ -245,6 +234,19 @@ export function AnimationTimelineDock({
     window.addEventListener('mousedown', handleClick);
     return () => window.removeEventListener('mousedown', handleClick);
   }, []);
+
+  // Sync tracks with animation.nlaStrips prop
+  useEffect(() => {
+    setTracks((prev) => {
+      const baseTrack = prev.find((t) => t.id === 'base');
+      const newBaseStrips = animation.nlaStrips ?? [];
+      if (baseTrack && baseTrack.strips.length === newBaseStrips.length &&
+          baseTrack.strips.every((s, i) => s.id === newBaseStrips[i]?.id)) {
+        return prev;
+      }
+      return prev.map((t) => t.id === 'base' ? { ...t, strips: newBaseStrips } : t);
+    });
+  }, [animation.nlaStrips]);
 
   if (collapsed) {
     return (
@@ -386,8 +388,6 @@ export function AnimationTimelineDock({
   const playheadX = (animation.currentFrame - 1) * pxPerFrame;
   const startBracketX = (frameStart - 1) * pxPerFrame;
   const endBracketX = (frameEnd - 1) * pxPerFrame;
-
-  const baseStrips = strips.filter((s) => s.trackId === 'base');
 
   const tickFrames: number[] = [];
   for (let f = 5; f <= maxTimelineFrame; f += 5) {
@@ -1431,7 +1431,7 @@ export function AnimationTimelineDock({
                             setContextMenu({ x: e.clientX, y: e.clientY, type: 'keyframe', data: { frame: kf, channel: 'summary' } });
                           }}
                         />
-                        {isSelected && graphTangentEdit && graphTangentEdit.frame === kf && (
+                        {isSelected && (
                           <>
                             <line
                               x1={cx - 30}

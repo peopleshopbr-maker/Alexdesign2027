@@ -2,11 +2,9 @@ import {
   Box,
   Boxes,
   Camera,
-  Code2,
   Film,
   Sparkles,
   Upload,
-  Wind,
   X,
 } from 'lucide-react';
 import type { SceneMode } from '../types/graphics';

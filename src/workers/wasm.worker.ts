@@ -2,7 +2,6 @@ import type {
   MeshAnalysisInput,
   MeshAnalysisOutput,
   RustSceneData,
-  RustVfxEmitterSpec,
   AnimationClipType,
 } from '../services/wasmTypes';
 
@@ -20,12 +19,6 @@ type WasmResponse =
   | { id: number; ok: true; result: { ok: boolean } }
   | { id: number; ok: true; result: AnimationClipType[] }
   | { id: number; ok: false; error: string };
-
-type WasmResult = MeshAnalysisOutput | Uint8Array | string | { ok: boolean } | AnimationClipType[];
-
-interface InitInput {
-  module_or_path: Promise<Response> | Response | URL | string | Request | ArrayBuffer | WebAssembly.Module;
-}
 
 interface WasmCoreExports {
   analyze_mesh_bounds: (input: MeshAnalysisInput) => MeshAnalysisOutput;
@@ -54,7 +47,7 @@ const workerSelf = self as unknown as {
 workerSelf.onmessage = async (ev: MessageEvent<WasmRequest>) => {
   const { id, type, ...payload } = ev.data;
   try {
-    let result: WasmResult;
+    let result: MeshAnalysisOutput | Uint8Array | string | { ok: boolean } | AnimationClipType[];
     const engine = await initRustEngineWorker();
 
     switch (type) {

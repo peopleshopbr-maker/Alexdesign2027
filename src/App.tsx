@@ -267,7 +267,7 @@ export default function App() {
     0, 0, 0, 1,
   ]);
   const [pieMenuOpen, setPieMenuOpen] = useState(false);
-  const [pieMenuPos, setPieMenuPos] = useState({ x: 640, y: 360 });
+  const [pieMenuPos] = useState({ x: 640, y: 360 });
   const lastPointerPosRef = useRef({ x: 640, y: 360 });
 
   const [nodesMeshCount, setNodesMeshCount] = useState(2);

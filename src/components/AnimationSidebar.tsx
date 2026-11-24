@@ -9,7 +9,6 @@ import {
   EyeOff,
   Film,
   Grid,
-  Layers,
   Pause,
   Play,
   RotateCcw,
@@ -97,26 +96,6 @@ const EXPORT_PROFILES: Array<{ id: RigExportProfile; label: string; title?: stri
   { id: 'godot', label: 'Godot' },
 ];
 
-const FK_BONES: Array<{ role: string; label: string }> = [
-  { role: 'hips', label: 'Pelvis / Quadril' },
-  { role: 'spine', label: 'Spine / Coluna' },
-  { role: 'chest', label: 'Chest / Tórax' },
-  { role: 'neck', label: 'Neck / Pescoço' },
-  { role: 'head', label: 'Head / Cabeça' },
-  { role: 'leftUpperArm', label: 'Braço Esq. (UpperArm_L)' },
-  { role: 'leftForeArm', label: 'Antebraço Esq. (ForeArm_L)' },
-  { role: 'leftHand', label: 'Mão Esq. (Hand_L)' },
-  { role: 'rightUpperArm', label: 'Braço Dir. (UpperArm_R)' },
-  { role: 'rightForeArm', label: 'Antebraço Dir. (ForeArm_R)' },
-  { role: 'rightHand', label: 'Mão Dir. (Hand_R)' },
-  { role: 'leftThigh', label: 'Coxa Esq. (Thigh_L)' },
-  { role: 'leftShin', label: 'Canela Esq. (Shin_L)' },
-  { role: 'leftFoot', label: 'Pé Esq. (Foot_L)' },
-  { role: 'rightThigh', label: 'Coxa Dir. (Thigh_R)' },
-  { role: 'rightShin', label: 'Canela Dir. (Shin_R)' },
-  { role: 'rightFoot', label: 'Pé Dir. (Foot_R)' },
-];
-
 export function AnimationSidebar({
   animation,
   loadedModelName,
@@ -157,11 +136,6 @@ export function AnimationSidebar({
   const retargetInputRef = useRef<HTMLInputElement>(null);
 
   const hasCurrentKeyframe = animation.keyframes.includes(animation.currentFrame);
-
-  const stampAutoKeyframe = () =>
-    animation.autoKey && !animation.keyframes.includes(animation.currentFrame)
-      ? [...animation.keyframes, animation.currentFrame].sort((a, b) => a - b)
-      : animation.keyframes;
 
   return (
     <aside

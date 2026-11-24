@@ -35,8 +35,6 @@ type WasmResponse =
   | { id: number; ok: true; result: AnimationClipType[] }
   | { id: number; ok: false; error: string };
 
-type WasmResult = MeshAnalysisOutput | Uint8Array | string | { ok: boolean };
-
 interface WasmCoreExports {
   analyze_mesh_bounds: (input: MeshAnalysisInput) => MeshAnalysisOutput;
   generate_rigged_animation_glb?: (sceneData: RustSceneData, clipType?: AnimationClipType) => Uint8Array;
@@ -44,12 +42,7 @@ interface WasmCoreExports {
   get_animation_clip_types?: () => AnimationClipType[];
 }
 
-interface InitInput {
-  module_or_path: Promise<Response> | Response | URL | string | Request | ArrayBuffer | WebAssembly.Module;
-}
-
 let cachedModulePromise: Promise<WasmCoreExports> | null = null;
-let initializedModule: WasmCoreExports | null = null;
 
 let worker: Worker | null = null;
 let workerReady = false;
@@ -76,6 +69,11 @@ function getWorker(): Worker {
     worker.onerror = (err) => {
       console.error('[rustEngine] Web Worker error:', err);
       workerReady = false;
+      // Clear all pending requests to avoid orphaned promises
+      pendingRequests.forEach(({ reject }) => {
+        reject(new Error('Worker terminated unexpectedly'));
+      });
+      pendingRequests.clear();
       worker = null;
     };
   }
@@ -138,7 +136,6 @@ async function postToMainThread<T>(
   if (!cachedModulePromise) {
     cachedModulePromise = (async () => {
       const mod = await import('../wasm/wasm_core.js');
-      initializedModule = mod as WasmCoreExports;
       return mod as WasmCoreExports;
     })().catch((err) => {
       cachedModulePromise = null;
@@ -175,18 +172,35 @@ async function postToMainThread<T>(
       }
       return engine.get_animation_clip_types() as T;
     }
+    case 'init': {
+      // Initialization is worker-only; main thread fallback doesn't need to handle it
+      throw new Error('Init request should not reach main thread fallback');
+    }
     default: {
-      throw new Error(`Tipo de requisição desconhecido: ${type}`);
+      const _exhaustive: never = type;
+      throw new Error(`Tipo de requisição desconhecido: ${_exhaustive}`);
     }
   }
 }
 
+export function terminateRustEngine(): void {
+  if (worker) {
+    worker.terminate();
+    worker = null;
+  }
+  workerReady = false;
+  workerInitPromise = null;
+  pendingRequests.forEach(({ reject }) => {
+    reject(new Error('Rust engine terminated'));
+  });
+  pendingRequests.clear();
+  cachedModulePromise = null;
+}
+
 export function isRustEngineAvailable(): boolean {
+  if (typeof window === 'undefined') return false;
   try {
-    // Check if the wasm module file exists by attempting to fetch it
-    // In development, this will be true if the file exists
-    // In production, the file will be bundled
-    return true;
+    return 'WebAssembly' in window && typeof WebAssembly.instantiate === 'function';
   } catch {
     return false;
   }

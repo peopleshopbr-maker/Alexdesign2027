@@ -4,52 +4,13 @@ import type {
   AnimationActionCycle,
   AnimationSettings,
   AutoRigPreset,
-  HumanoidJointMarkerId,
+  BoneRestEntry,
+  CustomJointMarkers,
+  HumanoidBoneRole,
   PoseLibraryPresetId,
   RigExportProfile,
+  SkeletonRigMap,
 } from '../types/graphics';
-
-export type HumanoidBoneRole =
-  | 'hips'
-  | 'spine'
-  | 'chest'
-  | 'neck'
-  | 'head'
-  | 'leftShoulder'
-  | 'leftUpperArm'
-  | 'leftForeArm'
-  | 'leftHand'
-  | 'rightShoulder'
-  | 'rightUpperArm'
-  | 'rightForeArm'
-  | 'rightHand'
-  | 'leftThigh'
-  | 'leftShin'
-  | 'leftFoot'
-  | 'rightThigh'
-  | 'rightShin'
-  | 'rightFoot';
-
-export type CustomJointMarkers = Record<HumanoidJointMarkerId, THREE.Vector3>;
-
-export interface BoneRestEntry {
-  bone: THREE.Bone;
-  restLocalPos: THREE.Vector3;
-  restLocalQuat: THREE.Quaternion;
-  restWorldPos: THREE.Vector3;
-  restParentWorldQuat: THREE.Quaternion;
-  restParentWorldQuatInv: THREE.Quaternion;
-}
-
-export interface SkeletonRigMap {
-  bones: BoneRestEntry[];
-  roles: Partial<Record<HumanoidBoneRole, BoneRestEntry>>;
-  spineChain: BoneRestEntry[];
-  tPoseArmDropRad: number;
-  leftForeArmBendAxis: THREE.Vector3;
-  rightForeArmBendAxis: THREE.Vector3;
-  boneCount: number;
-}
 
 export interface AutoRigOutput {
   riggedRoot: THREE.Group;
@@ -747,7 +708,6 @@ function evaluateActionParams(
     out.stretchY = 1;
   } else if (action === 'interact') {
     const progress = angle / (Math.PI * 2);
-    const s = Math.sin(angle);
     out.torsoRotX = progress < 0.5 ? -0.2 * Math.sin(progress * Math.PI * 2) : -0.2 * Math.sin((1 - (progress - 0.5) * 2) * Math.PI);
     out.torsoRotY = progress < 0.5 ? 0.2 * Math.sin(progress * Math.PI * 2) : 0.2 * Math.sin((1 - (progress - 0.5) * 2) * Math.PI);
     out.rShoX = progress < 0.3 ? -0.3 * Math.sin(progress * Math.PI / 0.3) : (progress < 0.7 ? -0.3 : -0.3 * Math.sin((progress - 0.7) * Math.PI / 0.3));
@@ -1727,6 +1687,11 @@ export function disableWeightHeatmapOnRoot(root: THREE.Object3D): void {
     if (skinned.userData.__weightHeatmapMat) {
       (skinned.userData.__weightHeatmapMat as THREE.Material).dispose();
       delete skinned.userData.__weightHeatmapMat;
+    }
+    const colorAttr = skinned.geometry.getAttribute('color');
+    if (colorAttr && 'dispose' in colorAttr) {
+      colorAttr.dispose();
+      skinned.geometry.deleteAttribute('color');
     }
   });
 }
