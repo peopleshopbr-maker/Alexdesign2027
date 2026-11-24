@@ -1203,3 +1203,4 @@ export function AnimationSidebar({
     </aside>
   );
 }
+

@@ -7,6 +7,9 @@ import type {
   RustVfxEmitterSpec,
   AnimationClipType,
   RustSceneData,
+  WasmRequest,
+  WasmResponse,
+  WasmCoreExports,
 } from './wasmTypes';
 
 export type {
@@ -20,27 +23,6 @@ export type {
   RustSceneData,
 };
 
-type WasmRequest =
-  | { id: number; type: 'init' }
-  | { id: number; type: 'analyze_mesh_bounds'; input: MeshAnalysisInput }
-  | { id: number; type: 'generate_rigged_animation_glb'; sceneData: RustSceneData; clipType?: AnimationClipType }
-  | { id: number; type: 'generate_blender_vfx_script'; sceneData: RustSceneData; glbFilename: string }
-  | { id: number; type: 'get_animation_clip_types' };
-
-type WasmResponse =
-  | { id: number; ok: true; result: MeshAnalysisOutput }
-  | { id: number; ok: true; result: Uint8Array }
-  | { id: number; ok: true; result: string }
-  | { id: number; ok: true; result: { ok: boolean } }
-  | { id: number; ok: true; result: AnimationClipType[] }
-  | { id: number; ok: false; error: string };
-
-interface WasmCoreExports {
-  analyze_mesh_bounds: (input: MeshAnalysisInput) => MeshAnalysisOutput;
-  generate_rigged_animation_glb?: (sceneData: RustSceneData, clipType?: AnimationClipType) => Uint8Array;
-  generate_blender_vfx_script?: (sceneData: RustSceneData, glbFilename: string) => string;
-  get_animation_clip_types?: () => AnimationClipType[];
-}
 
 let cachedModulePromise: Promise<WasmCoreExports> | null = null;
 
@@ -136,7 +118,7 @@ async function postToMainThread<T>(
   if (!cachedModulePromise) {
     cachedModulePromise = (async () => {
       const mod = await import('../wasm/wasm_core.js');
-      return mod as WasmCoreExports;
+      return mod as unknown as WasmCoreExports;
     })().catch((err) => {
       cachedModulePromise = null;
       throw err;
@@ -221,3 +203,4 @@ export async function getAnimationClipTypesWasm(): Promise<AnimationClipType[]> 
 export async function generateBlenderVfxScriptWasm(sceneData: RustSceneData, glbFilename: string): Promise<string> {
   return postToWorker<string>('generate_blender_vfx_script', { sceneData, glbFilename });
 }
+

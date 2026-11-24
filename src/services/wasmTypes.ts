@@ -73,3 +73,21 @@ export interface RustSceneData {
   emitters: RustVfxEmitterSpec[];
   clipType?: AnimationClipType;
 }
+export type WasmRequest =
+  | { id: number; type: 'init' }
+  | { id: number; type: 'analyze_mesh_bounds'; input: MeshAnalysisInput }
+  | { id: number; type: 'generate_rigged_animation_glb'; sceneData: RustSceneData; clipType?: AnimationClipType }
+  | { id: number; type: 'get_animation_clip_types' }
+  | { id: number; type: 'generate_blender_vfx_script'; sceneData: RustSceneData; glbFilename: string };
+
+export type WasmResponse =
+  | { id: number; ok: true; result: unknown }
+  | { id: number; ok: false; error: string };
+
+export interface WasmCoreExports {
+  analyze_mesh_bounds: (input: MeshAnalysisInput) => MeshAnalysisOutput;
+  generate_rigged_animation_glb?: (sceneData: RustSceneData, clipType?: AnimationClipType) => Uint8Array;
+  generate_blender_vfx_script?: (sceneData: RustSceneData, glbFilename: string) => string;
+  get_animation_clip_types?: () => AnimationClipType[];
+  evaluate_scene_frame?: (sceneData: RustSceneData, timeSec: number) => unknown;
+}

@@ -375,3 +375,4 @@ export function BottomDock({
     </div>
   );
 }
+

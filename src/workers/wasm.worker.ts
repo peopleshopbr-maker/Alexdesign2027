@@ -3,29 +3,11 @@ import type {
   MeshAnalysisOutput,
   RustSceneData,
   AnimationClipType,
+  WasmRequest,
+  WasmResponse,
+  WasmCoreExports,
 } from '../services/wasmTypes';
 
-type WasmRequest =
-  | { id: number; type: 'init' }
-  | { id: number; type: 'analyze_mesh_bounds'; input: MeshAnalysisInput }
-  | { id: number; type: 'generate_rigged_animation_glb'; sceneData: RustSceneData; clipType?: AnimationClipType }
-  | { id: number; type: 'generate_blender_vfx_script'; sceneData: RustSceneData; glbFilename: string }
-  | { id: number; type: 'get_animation_clip_types' };
-
-type WasmResponse =
-  | { id: number; ok: true; result: MeshAnalysisOutput }
-  | { id: number; ok: true; result: Uint8Array }
-  | { id: number; ok: true; result: string }
-  | { id: number; ok: true; result: { ok: boolean } }
-  | { id: number; ok: true; result: AnimationClipType[] }
-  | { id: number; ok: false; error: string };
-
-interface WasmCoreExports {
-  analyze_mesh_bounds: (input: MeshAnalysisInput) => MeshAnalysisOutput;
-  generate_rigged_animation_glb?: (sceneData: RustSceneData, clipType?: AnimationClipType) => Uint8Array;
-  generate_blender_vfx_script?: (sceneData: RustSceneData, glbFilename: string) => string;
-  get_animation_clip_types?: () => AnimationClipType[];
-}
 
 let initializedModule: WasmCoreExports | null = null;
 
@@ -35,8 +17,8 @@ async function initRustEngineWorker(): Promise<WasmCoreExports> {
   }
 
   const mod = await import('../wasm/wasm_core.js');
-  initializedModule = mod as WasmCoreExports;
-  return mod as WasmCoreExports;
+  initializedModule = mod as unknown as WasmCoreExports;
+  return mod as unknown as WasmCoreExports;
 }
 
 const workerSelf = self as unknown as {
@@ -113,3 +95,4 @@ workerSelf.onmessage = async (ev: MessageEvent<WasmRequest>) => {
 };
 
 export {};
+
