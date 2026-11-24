@@ -752,6 +752,7 @@ export class ThreeStudioEngine {
 
     this.camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 120);
     this.camera.position.set(5.4, 3.6, 6.2);
+    this.camera.lookAt(0, 1.35, 0);
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = !this.isSoftwareGl;
