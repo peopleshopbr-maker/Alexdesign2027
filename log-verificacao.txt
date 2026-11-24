@@ -1,0 +1,58 @@
+npm notice run react-example@0.0.0 npx
+npm notice run ^"tsc^" --noEmit
+npm notice run react-example@0.0.0 build
+npm notice run bun run build:wasm && vite build
+$ cd wasm-core && wasm-pack build --target bundler --out-dir ../src/wasm
+[INFO]: Checking for the Wasm target...
+[INFO]: Compiling to Wasm...
+warning: method `is_loop` is never used
+   --> src\glb.rs:403:12
+    |
+348 | impl AnimationClipType {
+    | ---------------------- method in this implementation
+...
+403 |     pub fn is_loop(&self) -> bool {
+    |            ^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+
+warning: function `build_rigged_animation_glb` is never used
+    --> src\glb.rs:1961:8
+     |
+1961 | pub fn build_rigged_animation_glb(scene: &SceneData) -> Result<Vec<u8>, String> {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+    Finished `release` profile [optimized] target(s) in 0.05s
+[INFO]: Optimizing wasm binaries with `wasm-opt`...
+[INFO]: Optional fields missing from Cargo.toml: 'repository', 'license'. These are not necessary, but recommended
+[INFO]: :-) Done in 1.72s
+[INFO]: :-) Your wasm pkg is ready to publish at C:\Users\studio alex\OneDrive\Documentos\Alexdesign\alexdesign2027\src\wasm.
+[36mvite v8.3.8 [32mbuilding client environment for production...[36m[39m
+transforming...
+Ô£ô 1722 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/assets/wasm.worker-BveogjKD.js             1.85 kB
+dist/index.html                                 2.01 kB Ôöé gzip:   0.81 kB
+dist/assets/wasm_core-DzinqklI.js              10.31 kB
+dist/assets/basis_transcoder-o4Hde_L7.js       57.52 kB
+dist/assets/draco_wasm_wrapper-fZCQGLGb.js     58.45 kB
+dist/assets/draco_wasm_wrapper-DxJM36Ib.js     58.76 kB
+dist/assets/wasm_core_bg-BLgvXO9Y.wasm        185.18 kB Ôöé gzip:  76.50 kB
+dist/assets/draco_decoder-Z1_iN-Ht.wasm       192.42 kB Ôöé gzip:  64.11 kB
+dist/assets/draco_decoder-C32yEggz.wasm       285.74 kB Ôöé gzip:  89.66 kB
+dist/assets/basis_transcoder-VXdx5NbI.wasm    527.33 kB Ôöé gzip: 248.94 kB
+dist/assets/draco_decoder-fzg4nYZr.js         719.41 kB
+dist/assets/index-Dc_xafWC.css                 53.95 kB Ôöé gzip:   9.94 kB
+dist/assets/wasm_core-OwxWhY1j.js               0.22 kB Ôöé gzip:   0.17 kB
+dist/assets/rolldown-runtime-BEbyAHrr.js        1.11 kB Ôöé gzip:   0.62 kB
+dist/assets/export-vendor-ZTtUmo9g.js          12.55 kB Ôöé gzip:   6.13 kB
+dist/assets/wasm-vendor-C6WXtZb0.js            12.92 kB Ôöé gzip:   5.01 kB
+dist/assets/ui-vendor-Do29muIk.js              14.42 kB Ôöé gzip:   5.31 kB
+dist/assets/react-vendor-u0UZJjQF.js          220.57 kB Ôöé gzip:  69.50 kB
+dist/assets/index-CvkPWLxK.js                 470.75 kB Ôöé gzip: 129.97 kB
+dist/assets/three-vendor-DTE7FAP9.js        1,200.69 kB Ôöé gzip: 360.23 kB
+
+[32mÔ£ô built in 822ms[39m

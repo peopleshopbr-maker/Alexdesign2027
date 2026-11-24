@@ -462,12 +462,12 @@ fn bone_role_map(bones: &[BoneSpec]) -> BTreeMap<String, usize> {
 /// Generate keyframes for a specific animation clip
 fn generate_animation_keyframes(
     clip: AnimationClipType,
-    bones: &[BoneSpec],
+    _bones: &[BoneSpec],
     bone_roles: &BTreeMap<String, usize>,
 ) -> Vec<(usize, Vec<KeyframeData>)> {
     // Returns: Vec<(bone_idx, Vec<(time, rotation_euler_deg, translation_offset)>>)>
     let duration = clip.duration();
-    let fps = clip.fps() as f32;
+    let _fps = clip.fps() as f32;
     let frame_count = clip.frame_count();
     let dt = duration / frame_count as f32;
 
@@ -515,8 +515,8 @@ fn generate_animation_keyframes(
             let hip_idx = get_bone("Hips");
             let spine_idx = get_bone("Spine");
             let chest_idx = get_bone("Chest");
-            let neck_idx = get_bone("Neck");
-            let head_idx = get_bone("Head");
+            let _neck_idx = get_bone("Neck");
+            let _head_idx = get_bone("Head");
             let l_upper_arm_idx = get_bone("LeftUpperArm");
             let r_upper_arm_idx = get_bone("RightUpperArm");
             let l_lower_arm_idx = get_bone("LeftLowerArm");
@@ -773,7 +773,7 @@ fn generate_animation_keyframes(
                     result.push((idx, kfs));
                 }
             }
-            for (idx_opt, phase_offset) in [
+            for (idx_opt, _phase_offset) in [
                 (l_upper_leg_idx, 0.0),
                 (r_upper_leg_idx, 0.0),
             ] {
@@ -1474,7 +1474,7 @@ fn generate_animation_keyframes(
             }
 
             // Lower arms: follow upper arms, palms facing forward/up
-            for (idx_opt, side) in [(l_lower_arm_idx, 1.0), (r_lower_arm_idx, -1.0)] {
+            for (idx_opt, _side) in [(l_lower_arm_idx, 1.0), (r_lower_arm_idx, -1.0)] {
                 if let Some(idx) = idx_opt {
                     let mut kfs = Vec::new();
                     for f in 0..=frame_count {

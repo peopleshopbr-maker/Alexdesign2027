@@ -20,8 +20,8 @@ export default defineConfig(({ mode }) => {
         apply: 'build',
         closeBundle(error?: Error): void {
           if (error) return;
-          const distDir = path.resolve(__dirname, 'dist');
-          const srcAssets = path.resolve(__dirname, 'src/assets');
+          const distDir = path.resolve(import.meta.dirname, 'dist');
+          const srcAssets = path.resolve(import.meta.dirname, 'src/assets');
           const distAssets = path.resolve(distDir, 'src/assets');
           if (fs.existsSync(distDir) && fs.existsSync(srcAssets)) {
             fs.cpSync(srcAssets, distAssets, { recursive: true, force: true });
@@ -33,18 +33,18 @@ export default defineConfig(({ mode }) => {
         name: 'copy-wasm-decoders',
         apply: 'build',
         closeBundle(): void {
-          const distDir = path.resolve(__dirname, 'dist');
+          const distDir = path.resolve(import.meta.dirname, 'dist');
           if (!fs.existsSync(distDir)) return;
 
           // Copy draco decoders
-          const dracoSrc = path.resolve(__dirname, 'node_modules/three/examples/jsm/libs/draco');
+          const dracoSrc = path.resolve(import.meta.dirname, 'node_modules/three/examples/jsm/libs/draco');
           const dracoDest = path.resolve(distDir, 'draco');
           if (fs.existsSync(dracoSrc)) {
             fs.cpSync(dracoSrc, dracoDest, { recursive: true, force: true });
           }
 
           // Copy basis universal transcoder
-          const basisSrc = path.resolve(__dirname, 'node_modules/three/examples/jsm/libs/basis');
+          const basisSrc = path.resolve(import.meta.dirname, 'node_modules/three/examples/jsm/libs/basis');
           const basisDest = path.resolve(distDir, 'basis');
           if (fs.existsSync(basisSrc)) {
             fs.cpSync(basisSrc, basisDest, { recursive: true, force: true });
@@ -77,13 +77,14 @@ export default defineConfig(({ mode }) => {
     },
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(import.meta.dirname, '.'),
       },
     },
     build: {
       target: 'esnext',
       minify: 'esbuild',
       cssCodeSplit: true,
+      chunkSizeWarningLimit: 1500,
       modulePreload: { polyfill: false },
       rollupOptions: {
         output: {
