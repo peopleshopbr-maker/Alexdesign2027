@@ -28,7 +28,6 @@ interface InitInput {
 }
 
 interface WasmCoreExports {
-  default: (module_or_path?: Promise<InitInput> | { module_or_path: Promise<InitInput> | InitInput; } | InitInput | undefined) => Promise<unknown>;
   analyze_mesh_bounds: (input: MeshAnalysisInput) => MeshAnalysisOutput;
   generate_rigged_animation_glb?: (sceneData: RustSceneData, clipType?: AnimationClipType) => Uint8Array;
   generate_blender_vfx_script?: (sceneData: RustSceneData, glbFilename: string) => string;
@@ -43,9 +42,6 @@ async function initRustEngineWorker(): Promise<WasmCoreExports> {
   }
 
   const mod = await import('../wasm/wasm_core.js');
-  if (typeof mod.default === 'function') {
-    await mod.default();
-  }
   initializedModule = mod as WasmCoreExports;
   return mod as WasmCoreExports;
 }
