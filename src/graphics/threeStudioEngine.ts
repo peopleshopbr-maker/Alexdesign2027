@@ -5184,9 +5184,6 @@ export class ThreeStudioEngine {
     const baseStrip = strips.find(
       (s) => !s.muted && s.trackId === 'base' && frameFloat >= s.startFrame && frameFloat <= s.endFrame
     );
-    const upperStrip = strips.find(
-      (s) => !s.muted && s.trackId === 'upper' && frameFloat >= s.startFrame && frameFloat <= s.endFrame
-    );
 
     let effectiveAnim = anim;
     let cycleFrame = frameFloat;
@@ -5210,14 +5207,6 @@ export class ThreeStudioEngine {
       const span = Math.max(1, endF - startF);
       const tNorm = THREE.MathUtils.clamp((frameFloat - startF) / span, 0, 1);
       cycleFrame = 1 + tNorm * 59;
-    }
-
-    if (upperStrip && upperStrip.actionCycle) {
-      effectiveAnim = {
-        ...effectiveAnim,
-        composeEnabled: true,
-        upperBodyAction: upperStrip.actionCycle,
-      };
     }
 
     return { effectiveAnim, cycleFrame, useBakedClip, clipIndex, startF, endF };
@@ -5253,7 +5242,6 @@ export class ThreeStudioEngine {
           eff.exaggeration
         );
         const phase = phaseRaw * Math.PI * 2 * patrol.stepMultiplier;
-        const arcBoost = (eff.arcs / 100) * 0.28;
         const bounce = eff.enabled
           ? Math.abs(Math.sin(phase * (eff.action === 'run' ? 2 : 1))) *
             (eff.action === 'jump' || eff.action === 'arc_leap' ? 0.55 : 0.14) *
@@ -5261,8 +5249,7 @@ export class ThreeStudioEngine {
           : 0;
         const cosBaseY = Math.cos(this.gltfBaseRot.y);
         const sinBaseY = Math.sin(this.gltfBaseRot.y);
-        const travelX =
-          patrol.offsetZ * sinBaseY + (eff.action === 'arc_leap' ? Math.sin(phase) * arcBoost : 0);
+        const travelX = patrol.offsetZ * sinBaseY;
         const travelZ = patrol.offsetZ * cosBaseY;
         this.loadedGltfRoot.position.set(
           this.gltfBasePos.x + travelX,
@@ -5705,7 +5692,7 @@ export class ThreeStudioEngine {
       ) {
         const anim = this.settings.animation;
         if (anim.playing && anim.cycleMode === 'full_cycle') {
-          this.animFrameFloat += dt * anim.fpsCadence * anim.timing * Math.max(0.2, speed);
+          this.animFrameFloat += dt * anim.fpsCadence * Math.max(0.2, speed);
           if (this.animFrameFloat > 60) {
             this.animFrameFloat = ((this.animFrameFloat - 1) % 60) + 1;
           }
@@ -6155,7 +6142,7 @@ export class ThreeStudioEngine {
       const spanF = Math.max(1, endF - startF + 1);
 
       if (anim.playing && anim.enabled && anim.cycleMode === 'full_cycle') {
-        this.animFrameFloat += dt * anim.fpsCadence * anim.timing * Math.max(0.2, this.settings.speed);
+        this.animFrameFloat += dt * anim.fpsCadence * Math.max(0.2, this.settings.speed);
         if (this.animFrameFloat < startF || this.animFrameFloat > endF) {
           this.animFrameFloat = startF + ((((this.animFrameFloat - startF) % spanF) + spanF) % spanF);
         }
@@ -6201,26 +6188,15 @@ export class ThreeStudioEngine {
             eff.exaggeration
           );
           const phase = phaseRaw * Math.PI * 2 * patrol.stepMultiplier;
-          const sq = (eff.squashStretch / 100) * 0.14 * eff.exaggeration;
-          const arcBoost = (eff.arcs / 100) * 0.28;
           const bounce = eff.enabled
             ? Math.abs(Math.sin(phase * (eff.action === 'run' ? 2 : 1))) *
               (eff.action === 'jump' || eff.action === 'arc_leap' ? 0.55 : 0.14) *
               eff.exaggeration
             : 0;
-          const secSway =
-            eff.secondaryAction === 'breathing'
-              ? Math.sin(phase * 2) * 0.02
-              : eff.secondaryAction === 'sway'
-                ? Math.sin(phase) * 0.08
-                : eff.secondaryAction === 'look_around'
-                  ? Math.sin(phase) * 0.22
-                  : 0;
 
           const cosBaseY = Math.cos(this.gltfBaseRot.y);
           const sinBaseY = Math.sin(this.gltfBaseRot.y);
-          const travelX =
-            patrol.offsetZ * sinBaseY + (eff.action === 'arc_leap' ? Math.sin(phase) * arcBoost : 0);
+          const travelX = patrol.offsetZ * sinBaseY;
           const travelZ = patrol.offsetZ * cosBaseY;
 
           this.loadedGltfRoot.position.set(
@@ -6229,13 +6205,11 @@ export class ThreeStudioEngine {
             this.gltfBasePos.z + travelZ
           );
           this.loadedGltfRoot.rotation.set(
-            this.gltfBaseRot.x + (eff.secondaryAction === 'sway' ? secSway * 0.4 : 0),
-            this.gltfBaseRot.y +
-              patrol.turnRotY +
-              (eff.secondaryAction === 'look_around' ? secSway : 0),
+            this.gltfBaseRot.x,
+            this.gltfBaseRot.y + patrol.turnRotY,
             this.gltfBaseRot.z
           );
-          const sy = 1 + Math.sin(phase * 2) * sq + (eff.secondaryAction === 'breathing' ? secSway : 0);
+          const sy = 1 + Math.sin(phase * 2) * 0;
           const sxz = 1 / Math.sqrt(Math.max(0.75, sy));
           this.loadedGltfRoot.scale.set(
             this.gltfBaseScale.x * sxz,

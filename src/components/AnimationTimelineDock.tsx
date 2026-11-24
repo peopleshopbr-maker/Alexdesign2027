@@ -5,7 +5,6 @@ import {
   ChevronRight,
   ChevronUp,
   Circle,
-  ClipboardPaste,
   Clock,
   Copy,
   CopyPlus,
@@ -33,7 +32,6 @@ import { useEffect, useRef, useState } from 'react';
 import type {
   AnimationActionCycle,
   AnimationSettings,
-  EasingCurveType,
   NlaTimelineStrip,
   TimelineViewMode,
 } from '../types/graphics';
@@ -73,16 +71,6 @@ const DOPE_CHANNELS = [
   { id: 'legs', label: 'Pernas (FK / IK)', color: 'text-indigo-300' },
 ] as const;
 
-function sampleEasingValue(easing: EasingCurveType, t: number): number {
-  const x = Math.max(0, Math.min(1, t));
-  if (easing === 'linear') return x;
-  if (easing === 'slow_in_out') return x * x * (3 - 2 * x);
-  if (easing === 'snap_out') return 1 - Math.pow(1 - x, 3);
-  // elastic
-  if (x === 0 || x === 1) return x;
-  return Math.pow(2, -10 * x) * Math.sin((x * 10 - 0.75) * ((2 * Math.PI) / 3)) + 1;
-}
-
 export function AnimationTimelineDock({
   collapsed,
   onToggleCollapsed,
@@ -101,7 +89,6 @@ export function AnimationTimelineDock({
   const [viewMode, setViewMode] = useState<TimelineViewMode>('strips');
   const [pxPerFrame, setPxPerFrame] = useState<number>(14);
   const [selectedStripId, setSelectedStripId] = useState<string | null>(null);
-  const [copiedPose, setCopiedPose] = useState<Record<string, [number, number, number]> | null>(null);
   const [clipMenuOpen, setClipMenuOpen] = useState(false);
 
   const laneScrollRef = useRef<HTMLDivElement>(null);
@@ -170,7 +157,7 @@ export function AnimationTimelineDock({
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
-  });
+  }, []);
 
   if (collapsed) {
     return (
@@ -220,7 +207,6 @@ export function AnimationTimelineDock({
   };
 
   const addNlaStrip = (
-    trackId: 'base' | 'upper',
     opts: {
       label: string;
       sourceType: 'procedural' | 'clip';
@@ -229,21 +215,18 @@ export function AnimationTimelineDock({
       startAt?: number;
     }
   ) => {
-    const existingOnTrack = strips.filter((s) => s.trackId === trackId);
-    const lastEnd = existingOnTrack.reduce((acc, s) => Math.max(acc, s.endFrame), 0);
+    const lastEnd = strips.reduce((acc, s) => Math.max(acc, s.endFrame), 0);
     const startFrame = Math.max(1, Math.min(frameEnd - 5, opts.startAt ?? (lastEnd > 0 ? lastEnd + 1 : frameStart)));
     const endFrame = Math.min(Math.max(frameEnd, startFrame + 24), startFrame + 24);
     const newStrip: NlaTimelineStrip = {
       id: `strip_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      trackId,
+      trackId: 'base',
       label: opts.label,
       sourceType: opts.sourceType,
       actionCycle: opts.actionCycle,
       clipIndex: opts.clipIndex,
       startFrame,
       endFrame,
-      blendIn: 4,
-      muted: false,
     };
     const nextEnd = Math.max(frameEnd, endFrame);
     onUpdateAnimation({
@@ -254,7 +237,7 @@ export function AnimationTimelineDock({
     });
     setSelectedStripId(newStrip.id);
     setClipMenuOpen(false);
-    onNotice(`Clipe "${opts.label}" adicionado na pista ${trackId === 'base' ? 'Base' : 'Superior'} (${startFrame}–${endFrame}f).`);
+    onNotice(`Clipe "${opts.label}" adicionado na pista Base (${startFrame}–${endFrame}f).`);
   };
 
   const handleDeleteSelected = () => {
@@ -300,31 +283,6 @@ export function AnimationTimelineDock({
     onNotice(`Keyframe duplicado no quadro ${nextFrame}f.`);
   };
 
-  const handleCopyPose = () => {
-    const snap: Record<string, [number, number, number]> = {};
-    for (const [k, v] of Object.entries(animation.poseOverrides)) {
-      snap[k] = [v[0], v[1], v[2]];
-    }
-    setCopiedPose(snap);
-    onNotice('Pose FK atual copiada para a área de transferência.');
-  };
-
-  const handlePastePose = () => {
-    if (!copiedPose) {
-      onNotice('Copie uma pose primeiro usando o ícone Copiar Pose.');
-      return;
-    }
-    const nextKf = animation.keyframes.includes(animation.currentFrame)
-      ? animation.keyframes
-      : [...animation.keyframes, animation.currentFrame].sort((a, b) => a - b);
-    onUpdateAnimation({
-      poseSource: 'procedural',
-      poseOverrides: { ...copiedPose },
-      keyframes: nextKf,
-    });
-    onNotice(`Pose colada e gravada no quadro ${animation.currentFrame}f.`);
-  };
-
   const handleFitZoom = () => {
     const viewportW = laneScrollRef.current?.clientWidth ?? 720;
     const fitted = Math.max(8, Math.min(24, Math.floor((viewportW - 24) / Math.max(20, frameEnd))));
@@ -343,7 +301,6 @@ export function AnimationTimelineDock({
   const endBracketX = (frameEnd - 1) * pxPerFrame;
 
   const baseStrips = strips.filter((s) => s.trackId === 'base');
-  const upperStrips = strips.filter((s) => s.trackId === 'upper');
 
   const tickFrames: number[] = [];
   for (let f = 5; f <= maxTimelineFrame; f += 5) {
@@ -357,7 +314,7 @@ export function AnimationTimelineDock({
     >
       {/* Barra de Ferramentas da Timeline (padrão NLA / Dope Sheet / Graph) */}
       <div className="h-9 sm:h-10 px-2 sm:px-2.5 border-b border-white/10 bg-[#0f141e] flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
-        {/* Grupo Esquerdo: Histórico, Pose, Retarget & Opções de Rig */}
+        {/* Grupo Esquerdo: Histórico, Duplicar & Opções de Rig */}
         <div className="flex items-center gap-1 shrink-0">
           <button
             type="button"
@@ -411,27 +368,6 @@ export function AnimationTimelineDock({
           </button>
 
           <div className="w-px h-4 bg-white/10 mx-0.5" />
-
-          <button
-            type="button"
-            onClick={handleCopyPose}
-            title="Copiar Pose FK atual"
-            className="h-7 w-7 rounded-md bg-[#151b28] hover:bg-[#1d2638] text-slate-300 hover:text-white border border-white/10 flex items-center justify-center cursor-pointer"
-          >
-            <Copy className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={handlePastePose}
-            title="Colar Pose FK no quadro atual"
-            className={`h-7 w-7 rounded-md border flex items-center justify-center cursor-pointer ${
-              copiedPose
-                ? 'bg-sky-500/15 text-sky-200 border-sky-400/40 hover:bg-sky-500/25'
-                : 'bg-[#151b28] text-slate-500 border-white/10'
-            }`}
-          >
-            <ClipboardPaste className="w-3.5 h-3.5" />
-          </button>
 
           <button
             type="button"
@@ -498,7 +434,7 @@ export function AnimationTimelineDock({
             type="button"
             aria-pressed={animation.autoKey}
             onClick={() => onUpdateAnimation({ autoKey: !animation.autoKey })}
-            title="Auto-Keyframe: grava keyframe automaticamente ao editar Pose FK/IK"
+            title="Auto-Keyframe: grava keyframe automaticamente ao editar Pose FK"
             className={`h-7 px-2 rounded-md border flex items-center gap-1 cursor-pointer ${
               animation.autoKey
                 ? 'bg-amber-500/25 text-amber-200 border-amber-400/55'
@@ -656,7 +592,7 @@ export function AnimationTimelineDock({
                       key={a.id}
                       type="button"
                       onClick={() =>
-                        addNlaStrip('base', {
+                        addNlaStrip({
                           label: a.label,
                           sourceType: 'procedural',
                           actionCycle: a.id,
@@ -679,7 +615,7 @@ export function AnimationTimelineDock({
                         key={`${name}_${idx}`}
                         type="button"
                         onClick={() =>
-                          addNlaStrip('base', {
+                          addNlaStrip({
                             label: name,
                             sourceType: 'clip',
                             clipIndex: idx,
@@ -831,7 +767,7 @@ export function AnimationTimelineDock({
                 <button
                   type="button"
                   onClick={() =>
-                    addNlaStrip('base', {
+                    addNlaStrip({
                       label: STRIP_PALETTE_ACTIONS.find((a) => a.id === animation.action)?.label ?? animation.action,
                       sourceType: animation.poseSource === 'clip' && loadedClips.length > 0 ? 'clip' : 'procedural',
                       actionCycle: animation.action,
@@ -840,38 +776,6 @@ export function AnimationTimelineDock({
                   }
                   title="Adicionar ação atual na pista Base"
                   className="h-6 px-1.5 rounded bg-sky-500/15 hover:bg-sky-500/30 text-sky-200 border border-sky-400/35 text-[10px] flex items-center gap-0.5 cursor-pointer shrink-0"
-                >
-                  <Plus className="w-3 h-3" />
-                </button>
-              </div>
-
-              {/* Track Superior */}
-              <div className="flex-1 px-2.5 py-1.5 border-b border-white/8 flex items-center justify-between gap-1">
-                <div className="min-w-0">
-                  <div className="text-[11px] font-semibold text-slate-200 leading-tight">
-                    Superior
-                  </div>
-                  <div className="text-[9px] text-slate-500 truncate">
-                    camada torso / braços
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    addNlaStrip('upper', {
-                      label:
-                        animation.upperBodyAction !== 'none'
-                          ? animation.upperBodyAction
-                          : 'Slash',
-                      sourceType: 'procedural',
-                      actionCycle:
-                        animation.upperBodyAction !== 'none'
-                          ? animation.upperBodyAction
-                          : 'slash',
-                    })
-                  }
-                  title="Adicionar ação superior (Slash/Wave/Punch)"
-                  className="h-6 px-1.5 rounded bg-amber-500/15 hover:bg-amber-500/30 text-amber-200 border border-amber-400/35 text-[10px] flex items-center gap-0.5 cursor-pointer shrink-0"
                 >
                   <Plus className="w-3 h-3" />
                 </button>
@@ -893,7 +797,7 @@ export function AnimationTimelineDock({
                         })
                       );
                     }}
-                    title="Arraste para a pista Base ou Superior"
+                    title="Arraste para a pista Base"
                     className="px-1.5 py-0.5 text-[9px] font-medium rounded bg-[#161d2e] hover:bg-sky-500/25 text-slate-200 border border-white/10 cursor-grab active:cursor-grabbing shrink-0"
                   >
                     {item.label}
@@ -906,32 +810,7 @@ export function AnimationTimelineDock({
           {viewMode === 'graph' && (
             <div className="flex-1 px-2.5 py-1.5 flex flex-col justify-between text-[10px]">
               <div className="flex flex-col gap-1">
-                <span className="text-sky-300 font-semibold">● Curva Timing ({animation.easing})</span>
-                <span className="text-emerald-300">● Arcos ({animation.arcs}%)</span>
-                <span className="text-amber-300">● Squash/Stretch ({animation.squashStretch}%)</span>
-              </div>
-              <div className="grid grid-cols-2 gap-1">
-                {(
-                  [
-                    { id: 'linear', label: 'Linear' },
-                    { id: 'slow_in_out', label: 'Slow In/Out' },
-                    { id: 'snap_out', label: 'Snap Out' },
-                    { id: 'elastic', label: 'Elástico' },
-                  ] as const
-                ).map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => onUpdateAnimation({ easing: c.id })}
-                    className={`h-5 px-1 text-[9px] rounded border cursor-pointer truncate ${
-                      animation.easing === c.id
-                        ? 'bg-sky-500/25 text-sky-100 border-sky-400/60'
-                        : 'bg-[#141a28] text-slate-400 border-white/10 hover:text-white'
-                    }`}
-                  >
-                    {c.label}
-                  </button>
-                ))}
+                <span className="text-sky-300 font-semibold">● Curva Timing</span>
               </div>
             </div>
           )}
@@ -1027,7 +906,7 @@ export function AnimationTimelineDock({
                               Math.round((e.clientX - rect.left + (el?.scrollLeft ?? 0)) / pxPerFrame) + 1
                             )
                           : frameStart;
-                        addNlaStrip('base', { ...payload, startAt: dropFrame });
+                        addNlaStrip({ ...payload, startAt: dropFrame });
                       } catch {
                         // ignore invalid drop
                       }
@@ -1065,11 +944,9 @@ export function AnimationTimelineDock({
                               };
                             }}
                             className={`absolute top-1.5 bottom-1.5 rounded-md border px-2 flex items-center justify-between gap-1 cursor-grab active:cursor-grabbing ${
-                              s.muted
-                                ? 'bg-slate-800/70 border-slate-600/50 text-slate-400 opacity-60'
-                                : selected
-                                  ? 'bg-sky-500/35 border-sky-300 text-white shadow-md'
-                                  : 'bg-sky-500/22 border-sky-400/60 text-sky-100'
+                              selected
+                                ? 'bg-sky-500/35 border-sky-300 text-white shadow-md'
+                                : 'bg-sky-500/22 border-sky-400/60 text-sky-100'
                             }`}
                           >
                             <div
@@ -1089,20 +966,6 @@ export function AnimationTimelineDock({
                             <span className="text-[10px] font-semibold truncate flex-1">
                               {s.label} ({s.startFrame}–{s.endFrame})
                             </span>
-                            <button
-                              type="button"
-                              onMouseDown={(e) => e.stopPropagation()}
-                              onClick={() =>
-                                onUpdateAnimation({
-                                  nlaStrips: strips.map((x) =>
-                                    x.id === s.id ? { ...x, muted: !x.muted } : x
-                                  ),
-                                })
-                              }
-                              className="text-slate-300 hover:text-white cursor-pointer shrink-0"
-                            >
-                              {s.muted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
-                            </button>
                             <div
                               onMouseDown={(e) => {
                                 e.stopPropagation();
@@ -1122,83 +985,6 @@ export function AnimationTimelineDock({
                       })
                     )}
                   </div>
-
-                  {/* Pista Superior */}
-                  <div
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      const raw = e.dataTransfer.getData('application/x-vertice-strip');
-                      if (!raw) return;
-                      try {
-                        const payload = JSON.parse(raw) as {
-                          label: string;
-                          sourceType: 'procedural' | 'clip';
-                          actionCycle?: AnimationActionCycle;
-                        };
-                        const el = laneScrollRef.current;
-                        const rect = el?.getBoundingClientRect();
-                        const dropFrame = rect
-                          ? Math.max(
-                              1,
-                              Math.round((e.clientX - rect.left + (el?.scrollLeft ?? 0)) / pxPerFrame) + 1
-                            )
-                          : frameStart;
-                        addNlaStrip('upper', { ...payload, startAt: dropFrame });
-                      } catch {
-                        // ignore invalid drop
-                      }
-                    }}
-                    className="flex-1 relative"
-                  >
-                    {upperStrips.map((s) => {
-                      const left = (s.startFrame - 1) * pxPerFrame;
-                      const width = Math.max(pxPerFrame * 4, (s.endFrame - s.startFrame + 1) * pxPerFrame);
-                      const selected = selectedStripId === s.id;
-                      return (
-                        <div
-                          key={s.id}
-                          style={{ left: `${left}px`, width: `${width}px` }}
-                          onMouseDown={(e) => {
-                            e.stopPropagation();
-                            setSelectedStripId(s.id);
-                            stripDragRef.current = {
-                              id: s.id,
-                              mode: 'move',
-                              originX: e.clientX,
-                              origStart: s.startFrame,
-                              origEnd: s.endFrame,
-                            };
-                          }}
-                          className={`absolute top-1.5 bottom-1.5 rounded-md border px-2 flex items-center justify-between gap-1 cursor-grab active:cursor-grabbing ${
-                            s.muted
-                              ? 'bg-slate-800/70 border-slate-600/50 text-slate-400 opacity-60'
-                              : selected
-                                ? 'bg-amber-500/35 border-amber-300 text-white shadow-md'
-                                : 'bg-amber-500/22 border-amber-400/60 text-amber-100'
-                          }`}
-                        >
-                          <span className="text-[10px] font-semibold truncate flex-1">
-                            {s.label} ({s.startFrame}–{s.endFrame})
-                          </span>
-                          <button
-                            type="button"
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onClick={() =>
-                              onUpdateAnimation({
-                                nlaStrips: strips.map((x) =>
-                                  x.id === s.id ? { ...x, muted: !x.muted } : x
-                                ),
-                              })
-                            }
-                            className="text-slate-300 hover:text-white cursor-pointer shrink-0"
-                          >
-                            {s.muted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
                 </div>
               )}
 
@@ -1214,50 +1000,24 @@ export function AnimationTimelineDock({
                 >
                   {/* Linha guia horizontal central */}
                   <line x1="0" y1="50" x2="400" y2="50" stroke="rgba(255,255,255,0.08)" strokeDasharray="4 4" />
-                  {/* Curva Timing / Easing */}
+                  {/* Curva Timing (linear simplificado) */}
                   <path
                     d={Array.from({ length: 49 }, (_, i) => {
                       const t = i / 48;
                       const x = t * 400;
-                      const y = 86 - sampleEasingValue(animation.easing, t) * 72;
+                      const y = 86 - t * 72;
                       return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
                     }).join(' ')}
                     fill="none"
                     stroke="#38bdf8"
                     strokeWidth="2.2"
                   />
-                  {/* Curva Arcos */}
-                  <path
-                    d={Array.from({ length: 49 }, (_, i) => {
-                      const t = i / 48;
-                      const x = t * 400;
-                      const amp = (animation.arcs / 100) * 34;
-                      const y = 50 - Math.sin(t * Math.PI * 2) * amp;
-                      return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
-                    }).join(' ')}
-                    fill="none"
-                    stroke="#34d399"
-                    strokeWidth="1.6"
-                  />
-                  {/* Curva Squash & Stretch */}
-                  <path
-                    d={Array.from({ length: 49 }, (_, i) => {
-                      const t = i / 48;
-                      const x = t * 400;
-                      const amp = (animation.squashStretch / 100) * 28;
-                      const y = 50 + Math.cos(t * Math.PI * 4) * amp;
-                      return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
-                    }).join(' ')}
-                    fill="none"
-                    stroke="#fbbf24"
-                    strokeWidth="1.4"
-                  />
                   {/* Pontos dos Keyframes na Curva */}
                   {animation.keyframes.map((kf) => {
                     const span = Math.max(1, frameEnd - frameStart);
                     const t = Math.max(0, Math.min(1, (kf - frameStart) / span));
                     const cx = t * 400;
-                    const cy = 86 - sampleEasingValue(animation.easing, t) * 72;
+                    const cy = 86 - t * 72;
                     return (
                       <circle
                         key={`g_kf_${kf}`}
@@ -1318,15 +1078,15 @@ export function AnimationTimelineDock({
                   ))}
                 </div>
               )}
-            </div>
 
-            {/* Playhead Vermelho Vertical (igual à referência) */}
-            <div
-              style={{ left: `${playheadX}px` }}
-              className="absolute top-0 bottom-0 w-[1.5px] bg-rose-500 pointer-events-none z-10"
-            >
-              <div className="px-1.5 py-0.5 rounded-sm bg-rose-500 text-white text-[9px] font-mono font-bold tabular-nums -translate-x-1/2 leading-none shadow">
-                {animation.currentFrame}
+              {/* Playhead Vermelho Vertical (igual à referência) */}
+              <div
+                style={{ left: `${playheadX}px` }}
+                className="absolute top-0 bottom-0 w-[1.5px] bg-rose-500 pointer-events-none z-10"
+              >
+                <div className="px-1.5 py-0.5 rounded-sm bg-rose-500 text-white text-[9px] font-mono font-bold tabular-nums -translate-x-1/2 leading-none shadow">
+                  {animation.currentFrame}
+                </div>
               </div>
             </div>
           </div>

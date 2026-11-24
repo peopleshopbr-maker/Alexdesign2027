@@ -1,6 +1,5 @@
 import {
   Bone,
-  BookmarkPlus,
   Brush,
   Camera,
   Check,
@@ -14,7 +13,6 @@ import {
   Pause,
   Play,
   RotateCcw,
-  Sliders,
   Sparkles,
   Sword,
   Upload,
@@ -23,20 +21,12 @@ import {
   X,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { POSE_LIBRARY_PRESETS } from '../graphics/autoRiggingAndRetarget';
 import type {
   AnimationActionCycle,
-  AnimationAppeal,
   AnimationSettings,
   AutoRigPreset,
-  EasingCurveType,
-  IkLimbId,
-  PoseLibraryPresetId,
   PropSocketType,
   RigExportProfile,
-  SavedPosePreset,
-  SecondaryAction,
-  StagingMode,
   WeightPaintSettings,
 } from '../types/graphics';
 
@@ -48,12 +38,6 @@ interface AnimationSidebarProps {
   rigBoneNames?: string[];
   weightPaint?: WeightPaintSettings;
   onUpdateWeightPaint?: (patch: Partial<WeightPaintSettings>) => void;
-  savedPoses?: SavedPosePreset[];
-  onSaveCustomPose?: (name: string) => void;
-  onApplyPoseOverrides?: (
-    overrides: Record<string, [number, number, number]>,
-    label?: string
-  ) => void;
   onRetargetMotionFile?: (file: File) => void;
   autoRigOnImport?: boolean;
   onToggleAutoRigOnImport?: () => void;
@@ -95,15 +79,6 @@ const ACTION_CYCLES: Array<{ id: AnimationActionCycle; label: string; spanFull?:
   { id: 'arc_leap', label: 'Salto / Arco Parabólico', spanFull: true },
 ];
 
-const UPPER_COMPOSE_ACTIONS: Array<{ id: AnimationActionCycle | 'none'; label: string }> = [
-  { id: 'none', label: 'Automático (Base)' },
-  { id: 'wave', label: 'Acenar (Superior)' },
-  { id: 'punch', label: 'Soco (Superior)' },
-  { id: 'slash', label: 'Corte Espada (Superior)' },
-  { id: 'aim', label: 'Mira / Guarda (Superior)' },
-  { id: 'dance', label: 'Ritmo (Superior)' },
-];
-
 const PROP_SOCKETS: Array<{ id: PropSocketType; label: string }> = [
   { id: 'none', label: 'Nenhum' },
   { id: 'sword', label: 'Espada' },
@@ -139,47 +114,6 @@ const FK_BONES: Array<{ role: string; label: string }> = [
   { role: 'rightFoot', label: 'Pé Dir. (Foot_R)' },
 ];
 
-const IK_LIMBS: Array<{ id: IkLimbId; label: string }> = [
-  { id: 'rightHand', label: 'IK Mão Direita' },
-  { id: 'leftHand', label: 'IK Mão Esquerda' },
-  { id: 'rightFoot', label: 'IK Pé Direito' },
-  { id: 'leftFoot', label: 'IK Pé Esquerdo' },
-];
-
-const APPEALS: Array<{ id: AnimationAppeal; label: string }> = [
-  { id: 'neutral', label: 'Neutro' },
-  { id: 'heroic', label: 'Heroico' },
-  { id: 'cartoon', label: 'Cartoon' },
-  { id: 'villain', label: 'Vilão' },
-];
-
-const STAGING_MODES: Array<{ id: StagingMode; label: string }> = [
-  { id: 'default', label: 'Padrão' },
-  { id: 'silhouette', label: 'Silhueta' },
-  { id: 'rim', label: 'Foco Rim' },
-];
-
-const EASING_TYPES: Array<{ id: EasingCurveType; label: string }> = [
-  { id: 'linear', label: 'Linear' },
-  { id: 'slow_in_out', label: 'Slow In/Out' },
-  { id: 'snap_out', label: 'Snap Out' },
-  { id: 'elastic', label: 'Elástico' },
-];
-
-const SECONDARY_ACTIONS: Array<{ id: SecondaryAction; label: string }> = [
-  { id: 'none', label: 'Nenhuma' },
-  { id: 'breathing', label: 'Respiração' },
-  { id: 'look_around', label: 'Olhar ao Redor' },
-  { id: 'sway', label: 'Gesto / Balanço' },
-];
-
-function getEasingSvgPath(easing: EasingCurveType): string {
-  if (easing === 'linear') return 'M 4 36 L 76 6';
-  if (easing === 'slow_in_out') return 'M 4 36 C 28 36, 52 6, 76 6';
-  if (easing === 'snap_out') return 'M 4 36 C 14 8, 36 6, 76 6';
-  return 'M 4 36 C 18 36, 26 2, 40 12 C 50 18, 60 4, 76 6';
-}
-
 export function AnimationSidebar({
   animation,
   loadedModelName,
@@ -188,9 +122,6 @@ export function AnimationSidebar({
   rigBoneNames = [],
   weightPaint,
   onUpdateWeightPaint,
-  savedPoses = [],
-  onSaveCustomPose,
-  onApplyPoseOverrides,
   onRetargetMotionFile,
   autoRigOnImport = false,
   onToggleAutoRigOnImport,
@@ -218,51 +149,16 @@ export function AnimationSidebar({
   timelineOpen = false,
   onClose,
 }: AnimationSidebarProps) {
-  const [activeTab, setActiveTab] = useState<'actions' | 'pose_ik' | 'rig_export'>('actions');
-  const [selectedFkBone, setSelectedFkBone] = useState<string>('rightUpperArm');
-  const [selectedIkLimb, setSelectedIkLimb] = useState<IkLimbId>('rightHand');
+  const [activeTab, setActiveTab] = useState<'actions' | 'rig_export'>('actions');
   const [frameStep, setFrameStep] = useState<1 | 2 | 4>(1);
-  const [newPoseName, setNewPoseName] = useState('');
   const retargetInputRef = useRef<HTMLInputElement>(null);
 
   const hasCurrentKeyframe = animation.keyframes.includes(animation.currentFrame);
-  const currentFkDeg = animation.poseOverrides[selectedFkBone] ?? [0, 0, 0];
-  const currentIk = animation.ikTargets[selectedIkLimb];
 
   const stampAutoKeyframe = () =>
     animation.autoKey && !animation.keyframes.includes(animation.currentFrame)
       ? [...animation.keyframes, animation.currentFrame].sort((a, b) => a - b)
       : animation.keyframes;
-
-  const updateFkAxis = (axisIdx: 0 | 1 | 2, deg: number) => {
-    const next: [number, number, number] = [...currentFkDeg];
-    next[axisIdx] = deg;
-    onUpdateAnimation({
-      poseSource: 'procedural',
-      keyframes: stampAutoKeyframe(),
-      poseOverrides: {
-        ...animation.poseOverrides,
-        [selectedFkBone]: next,
-      },
-    });
-  };
-
-  const updateIkOffset = (axisIdx: 0 | 1 | 2, val: number) => {
-    const nextOffset: [number, number, number] = [...currentIk.offset];
-    nextOffset[axisIdx] = val;
-    onUpdateAnimation({
-      poseSource: 'procedural',
-      keyframes: stampAutoKeyframe(),
-      ikTargets: {
-        ...animation.ikTargets,
-        [selectedIkLimb]: {
-          ...currentIk,
-          enabled: true,
-          offset: nextOffset,
-        },
-      },
-    });
-  };
 
   return (
     <aside
@@ -318,7 +214,7 @@ export function AnimationSidebar({
             className={`h-8 text-xs font-medium rounded-lg flex items-center justify-center gap-1.5 cursor-pointer ${
               !animation.playing
                 ? 'bg-[#1e293b] text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-slate-400 hover:text-white hover:bg-white/10'
             }`}
           >
             <Pause className="w-3.5 h-3.5" />
@@ -337,7 +233,7 @@ export function AnimationSidebar({
             className={`h-8 text-xs font-medium rounded-lg flex items-center justify-center gap-1.5 cursor-pointer ${
               animation.playing
                 ? 'bg-emerald-500/25 text-emerald-200 border border-emerald-400/35'
-                : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                : 'text-slate-400 hover:text-white hover:bg-white/10 border border-transparent'
             }`}
           >
             <Play className="w-3.5 h-3.5" />
@@ -451,18 +347,6 @@ export function AnimationSidebar({
         <div className="grid grid-cols-2 gap-1.5">
           <button
             type="button"
-            aria-pressed={animation.physicsEnabled}
-            onClick={() => onUpdateAnimation({ physicsEnabled: !animation.physicsEnabled })}
-            className={`h-8 px-2 text-[11px] font-medium rounded-lg border cursor-pointer flex items-center justify-center ${
-              animation.physicsEnabled
-                ? 'bg-sky-500/20 text-sky-200 border-sky-400/55'
-                : 'bg-[#121826] text-slate-300 border-white/10 hover:bg-[#192235] hover:text-white'
-            }`}
-          >
-            Física Sec.: {animation.physicsEnabled ? 'ON' : 'OFF'}
-          </button>
-          <button
-            type="button"
             aria-pressed={animation.inPlace}
             onClick={() => onUpdateAnimation({ inPlace: !animation.inPlace })}
             className={`h-8 px-2 text-[11px] font-medium rounded-lg border cursor-pointer flex items-center justify-center ${
@@ -520,7 +404,7 @@ export function AnimationSidebar({
         </div>
       </div>
 
-      {/* Auto-Rigging ao importar + Cartão do Modelo, Ossos & Marcadores (junto de Animação) */}
+      {/* Auto-Rigging ao importar + Cartão do Modelo, Ossos & Marcadores */}
       {onToggleAutoRigOnImport && (
         <button
           type="button"
@@ -753,8 +637,8 @@ export function AnimationSidebar({
         )
       )}
 
-      {/* Abas ActionForge: Ações & Camadas | Pose FK & IK | Rig & Exportar */}
-      <div className="grid grid-cols-3 gap-1 bg-[#05070b] p-1 rounded-xl border border-white/10">
+      {/* Abas ActionForge: Ações | Rig & Exportar */}
+      <div className="grid grid-cols-2 gap-1 bg-[#05070b] p-1 rounded-xl border border-white/10">
         <button
           type="button"
           onClick={() => setActiveTab('actions')}
@@ -766,18 +650,6 @@ export function AnimationSidebar({
         >
           <Sparkles className="w-3 h-3" />
           <span>Ações</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('pose_ik')}
-          className={`h-8 text-[11px] font-medium rounded-lg flex items-center justify-center gap-1 cursor-pointer ${
-            activeTab === 'pose_ik'
-              ? 'bg-sky-500/20 text-sky-200 border border-sky-400/40'
-              : 'text-slate-400 hover:text-white border border-transparent'
-          }`}
-        >
-          <Sliders className="w-3 h-3" />
-          <span>FK &amp; IK</span>
         </button>
         <button
           type="button"
@@ -799,7 +671,7 @@ export function AnimationSidebar({
             <div className="flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-sky-400" />
               <span className="text-xs font-semibold text-slate-200">
-                Ações &amp; 12 Princípios
+                Ações &amp; Animação Procedural
               </span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -866,56 +738,6 @@ export function AnimationSidebar({
             </div>
           </div>
 
-          {/* Camadas / Compose (ActionForge Layering) */}
-          <div className="rounded-lg bg-[#05070b] border border-white/10 p-2.5 flex flex-col gap-2">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-semibold text-slate-200 flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-sky-400" />
-                <span>Compose (Camada Superior)</span>
-              </span>
-              <button
-                type="button"
-                aria-pressed={animation.composeEnabled}
-                onClick={() =>
-                  onUpdateAnimation({
-                    composeEnabled: !animation.composeEnabled,
-                    upperBodyAction:
-                      !animation.composeEnabled && animation.upperBodyAction === 'none'
-                        ? 'wave'
-                        : animation.upperBodyAction,
-                    poseSource: 'procedural',
-                  })
-                }
-                className={`h-6 px-2 text-[10px] font-mono rounded border cursor-pointer ${
-                  animation.composeEnabled
-                    ? 'bg-sky-500/25 text-sky-200 border-sky-400/50'
-                    : 'bg-[#121826] text-slate-400 border-white/10'
-                }`}
-              >
-                {animation.composeEnabled ? 'ON' : 'OFF'}
-              </button>
-            </div>
-            {animation.composeEnabled && (
-              <select
-                aria-label="Ação do tronco e braços"
-                value={animation.upperBodyAction}
-                onChange={(e) =>
-                  onUpdateAnimation({
-                    upperBodyAction: e.target.value as AnimationActionCycle | 'none',
-                    poseSource: 'procedural',
-                  })
-                }
-                className="w-full h-8 px-2 text-[11px] rounded-lg bg-[#121826] text-slate-100 border border-white/12 outline-none"
-              >
-                {UPPER_COMPOSE_ACTIONS.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.label}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-
           {/* Prop Sockets (Acessório na Mão) */}
           <div className="flex flex-col gap-1.5">
             <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1.5">
@@ -941,229 +763,8 @@ export function AnimationSidebar({
             </div>
           </div>
 
-          {/* 12. Apelo */}
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-medium text-slate-400">
-              12. Apelo (Personalidade)
-            </span>
-            <div className="grid grid-cols-4 gap-1.5">
-              {APPEALS.map((ap) => {
-                const active = animation.appeal === ap.id;
-                return (
-                  <button
-                    key={ap.id}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => onUpdateAnimation({ appeal: ap.id, poseSource: 'procedural' })}
-                    className={`h-8 px-1.5 text-[11px] font-medium rounded-lg border whitespace-nowrap cursor-pointer flex items-center justify-center ${
-                      active
-                        ? 'bg-sky-500/20 text-sky-200 border-sky-400/55'
-                        : 'bg-[#121826] text-slate-300 border-white/10 hover:bg-[#192235] hover:text-white'
-                    }`}
-                  >
-                    {ap.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 1. Squash/Stretch & 2. Antecipação */}
-          <div className="grid grid-cols-2 gap-3">
-            <label className="flex flex-col gap-1.5 text-[11px]">
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-slate-400 truncate">1. Squash/Stretch</span>
-                <span className="font-mono tabular-nums text-sky-300">
-                  {animation.squashStretch}%
-                </span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                step={5}
-                value={animation.squashStretch}
-                onChange={(e) => onUpdateAnimation({ squashStretch: Number(e.target.value) })}
-                className="studio-slider w-full"
-              />
-            </label>
-
-            <label className="flex flex-col gap-1.5 text-[11px]">
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-slate-400 truncate">2. Antecipação</span>
-                <span className="font-mono tabular-nums text-sky-300">
-                  {animation.anticipation}%
-                </span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                step={5}
-                value={animation.anticipation}
-                onChange={(e) => onUpdateAnimation({ anticipation: Number(e.target.value) })}
-                className="studio-slider w-full"
-              />
-            </label>
-          </div>
-
-          {/* 3. Encenação (Staging) */}
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1.5">
-              <Eye className="w-3.5 h-3.5 text-sky-400" />
-              <span>3. Encenação (Staging &amp; Silhueta)</span>
-            </span>
-            <div className="grid grid-cols-3 gap-1.5">
-              {STAGING_MODES.map((st) => {
-                const active = animation.staging === st.id;
-                return (
-                  <button
-                    key={st.id}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => onUpdateAnimation({ staging: st.id })}
-                    className={`h-8 px-2 text-[11px] font-medium rounded-lg border whitespace-nowrap cursor-pointer flex items-center justify-center ${
-                      active
-                        ? 'bg-sky-500/20 text-sky-200 border-sky-400/55'
-                        : 'bg-[#121826] text-slate-300 border-white/10 hover:bg-[#192235] hover:text-white'
-                    }`}
-                  >
-                    {st.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 4. Método */}
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-medium text-slate-400">
-              4. Método (Pose vs Direta)
-            </span>
-            <div className="grid grid-cols-2 gap-1.5">
-              <button
-                type="button"
-                aria-pressed={animation.method === 'pose_to_pose'}
-                onClick={() => onUpdateAnimation({ method: 'pose_to_pose' })}
-                className={`h-9 px-2 text-[11px] font-medium rounded-lg border cursor-pointer flex items-center justify-center text-center leading-tight ${
-                  animation.method === 'pose_to_pose'
-                    ? 'bg-sky-500/20 text-sky-200 border-sky-400/55'
-                    : 'bg-[#121826] text-slate-300 border-white/10 hover:bg-[#192235] hover:text-white'
-                }`}
-              >
-                Pose a Pose
-              </button>
-              <button
-                type="button"
-                aria-pressed={animation.method === 'straight_ahead'}
-                onClick={() => onUpdateAnimation({ method: 'straight_ahead' })}
-                className={`h-9 px-2 text-[11px] font-medium rounded-lg border cursor-pointer flex items-center justify-center text-center leading-tight ${
-                  animation.method === 'straight_ahead'
-                    ? 'bg-sky-500/20 text-sky-200 border-sky-400/55'
-                    : 'bg-[#121826] text-slate-300 border-white/10 hover:bg-[#192235] hover:text-white'
-                }`}
-              >
-                Direta (Orgânica)
-              </button>
-            </div>
-          </div>
-
-          {/* 5. Sobreposição & 10. Exagero */}
-          <div className="grid grid-cols-2 gap-3">
-            <label className="flex flex-col gap-1.5 text-[11px]">
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-slate-400 truncate">5. Sobreposição</span>
-                <span className="font-mono tabular-nums text-sky-300">
-                  {animation.followThrough}%
-                </span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                step={5}
-                value={animation.followThrough}
-                onChange={(e) => onUpdateAnimation({ followThrough: Number(e.target.value) })}
-                className="studio-slider w-full"
-              />
-            </label>
-
-            <label className="flex flex-col gap-1.5 text-[11px]">
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-slate-400 truncate">10. Exagero</span>
-                <span className="font-mono tabular-nums text-sky-300">
-                  {animation.exaggeration.toFixed(1)}x
-                </span>
-              </div>
-              <input
-                type="range"
-                min={0.5}
-                max={2.0}
-                step={0.1}
-                value={animation.exaggeration}
-                onChange={(e) => onUpdateAnimation({ exaggeration: Number(e.target.value) })}
-                className="studio-slider w-full"
-              />
-            </label>
-          </div>
-
-          {/* 6. Graph Editor (Easing) */}
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-medium text-slate-400">
-              6. Aceleração / Desaceleração (Easing)
-            </span>
-            <div className="flex items-center gap-2">
-              <div className="w-20 h-[68px] rounded-lg bg-[#05070b] border border-white/10 flex items-center justify-center shrink-0">
-                <svg viewBox="0 0 80 42" className="w-full h-full">
-                  <path
-                    d={getEasingSvgPath(animation.easing)}
-                    fill="none"
-                    stroke="#38bdf8"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </div>
-              <div className="grid grid-cols-2 gap-1.5 flex-1">
-                {EASING_TYPES.map((es) => {
-                  const active = animation.easing === es.id;
-                  return (
-                    <button
-                      key={es.id}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => onUpdateAnimation({ easing: es.id })}
-                      className={`h-8 px-2 text-[11px] font-medium rounded-lg border whitespace-nowrap cursor-pointer flex items-center justify-center ${
-                        active
-                          ? 'bg-sky-500/20 text-sky-200 border-sky-400/55'
-                          : 'bg-[#121826] text-slate-300 border-white/10 hover:bg-[#192235] hover:text-white'
-                      }`}
-                    >
-                      {es.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* 7. Arcos + Motion Trail */}
-          <div className="flex items-end gap-2">
-            <label className="flex flex-col gap-1.5 text-[11px] flex-1">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400">7. Arcos (Trajetória)</span>
-                <span className="font-mono tabular-nums text-sky-300">{animation.arcs}%</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                step={5}
-                value={animation.arcs}
-                onChange={(e) => onUpdateAnimation({ arcs: Number(e.target.value) })}
-                className="studio-slider w-full"
-              />
-            </label>
+          {/* Motion Trail */}
+          <div className="flex items-center gap-2">
             <button
               type="button"
               aria-pressed={animation.motionTrail}
@@ -1176,70 +777,6 @@ export function AnimationSidebar({
             >
               Motion Trail
             </button>
-          </div>
-
-          {/* 8. Ação Secundária */}
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-medium text-slate-400">8. Ação Secundária</span>
-            <div className="grid grid-cols-2 gap-1.5">
-              {SECONDARY_ACTIONS.map((sa) => {
-                const active = animation.secondaryAction === sa.id;
-                return (
-                  <button
-                    key={sa.id}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => onUpdateAnimation({ secondaryAction: sa.id })}
-                    className={`h-8 px-2 text-[11px] font-medium rounded-lg border whitespace-nowrap cursor-pointer flex items-center justify-center ${
-                      active
-                        ? 'bg-sky-500/20 text-sky-200 border-sky-400/55'
-                        : 'bg-[#121826] text-slate-300 border-white/10 hover:bg-[#192235] hover:text-white'
-                    }`}
-                  >
-                    {sa.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 9. Temporização & 11. Desenho Sólido */}
-          <div className="grid grid-cols-2 gap-3">
-            <label className="flex flex-col gap-1.5 text-[11px]">
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-slate-400 truncate">9. Temporização</span>
-                <span className="font-mono tabular-nums text-sky-300">
-                  {animation.timing.toFixed(2)}x
-                </span>
-              </div>
-              <input
-                type="range"
-                min={0.25}
-                max={2.0}
-                step={0.05}
-                value={animation.timing}
-                onChange={(e) => onUpdateAnimation({ timing: Number(e.target.value) })}
-                className="studio-slider w-full"
-              />
-            </label>
-
-            <label className="flex flex-col gap-1.5 text-[11px]">
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-slate-400 truncate">11. Desenho Sólido</span>
-                <span className="font-mono tabular-nums text-sky-300">
-                  {animation.solidDrawing}%
-                </span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                step={5}
-                value={animation.solidDrawing}
-                onChange={(e) => onUpdateAnimation({ solidDrawing: Number(e.target.value) })}
-                className="studio-slider w-full"
-              />
-            </label>
           </div>
 
           {/* Cadência (FPS) */}
@@ -1262,260 +799,6 @@ export function AnimationSidebar({
                 </button>
               ))}
             </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'pose_ik' && (
-        <div className="flex flex-col gap-3">
-          {/* Biblioteca de Poses Rápidas & Salvar Poses */}
-          <div className="rounded-xl bg-[#090c13] border border-white/10 p-3 flex flex-col gap-2">
-            <span className="text-xs font-semibold text-white">
-              Biblioteca de Poses Rápidas
-            </span>
-            <div className="grid grid-cols-3 gap-1.5">
-              {(Object.keys(POSE_LIBRARY_PRESETS) as PoseLibraryPresetId[]).map((presetId) => {
-                const preset = POSE_LIBRARY_PRESETS[presetId];
-                return (
-                  <button
-                    key={presetId}
-                    type="button"
-                    onClick={() => {
-                      if (onApplyPoseOverrides) {
-                        onApplyPoseOverrides(preset.overrides, preset.label);
-                      } else {
-                        onUpdateAnimation({
-                          poseSource: 'procedural',
-                          cycleMode: 'static',
-                          playing: false,
-                          poseOverrides: { ...preset.overrides },
-                        });
-                      }
-                    }}
-                    className="h-8 px-1.5 text-[11px] font-medium rounded-lg bg-[#121826] hover:bg-[#192235] text-slate-200 border border-white/10 hover:border-sky-400/45 cursor-pointer truncate"
-                  >
-                    {preset.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {onSaveCustomPose && (
-              <div className="flex items-center gap-1.5 pt-1">
-                <input
-                  type="text"
-                  value={newPoseName}
-                  onChange={(e) => setNewPoseName(e.target.value)}
-                  placeholder={`Pose ${savedPoses.length + 1}`}
-                  className="flex-1 h-8 px-2.5 text-[11px] rounded-lg bg-[#080b11] text-slate-100 border border-white/12 outline-none focus:border-sky-400"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    onSaveCustomPose(newPoseName.trim() || `Pose ${savedPoses.length + 1}`);
-                    setNewPoseName('');
-                  }}
-                  className="h-8 px-2.5 text-[11px] font-semibold rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-100 border border-sky-400/45 flex items-center gap-1 cursor-pointer shrink-0"
-                >
-                  <BookmarkPlus className="w-3.5 h-3.5" />
-                  <span>Salvar</span>
-                </button>
-              </div>
-            )}
-
-            {savedPoses.length > 0 && (
-              <div className="flex flex-wrap gap-1 pt-0.5">
-                {savedPoses.map((pose) => (
-                  <button
-                    key={pose.id}
-                    type="button"
-                    onClick={() => {
-                      if (onApplyPoseOverrides) {
-                        onApplyPoseOverrides(pose.overrides, pose.name);
-                      } else {
-                        onUpdateAnimation({
-                          poseSource: 'procedural',
-                          cycleMode: 'static',
-                          playing: false,
-                          poseOverrides: { ...pose.overrides },
-                        });
-                      }
-                    }}
-                    className="h-7 px-2 text-[10px] font-medium rounded-md bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-200 border border-emerald-400/35 cursor-pointer"
-                  >
-                    {pose.name}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Live IK (ActionForge 2-Bone Analytical IK) */}
-          <div className="rounded-xl bg-[#090c13] border border-white/10 p-3 flex flex-col gap-2.5">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-semibold text-white">
-                Live IK (Membros 2-Ossos)
-              </span>
-              <button
-                type="button"
-                onClick={() =>
-                  onUpdateAnimation({
-                    ikTargets: {
-                      leftHand: { enabled: false, offset: [0, 0, 0] },
-                      rightHand: { enabled: false, offset: [0, 0, 0] },
-                      leftFoot: { enabled: false, offset: [0, 0, 0] },
-                      rightFoot: { enabled: false, offset: [0, 0, 0] },
-                    },
-                  })
-                }
-                className="text-[10px] text-slate-400 hover:text-white cursor-pointer"
-              >
-                Zerar IK
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-1.5">
-              {IK_LIMBS.map((limb) => {
-                const st = animation.ikTargets[limb.id];
-                const isSel = selectedIkLimb === limb.id;
-                return (
-                  <button
-                    key={limb.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedIkLimb(limb.id);
-                      if (!st.enabled) {
-                        onUpdateAnimation({
-                          poseSource: 'procedural',
-                          ikTargets: {
-                            ...animation.ikTargets,
-                            [limb.id]: { ...st, enabled: true },
-                          },
-                        });
-                      }
-                    }}
-                    className={`h-8 px-2 text-[11px] font-medium rounded-lg border cursor-pointer flex items-center justify-between ${
-                      isSel && st.enabled
-                        ? 'bg-sky-500/20 text-sky-100 border-sky-400/55'
-                        : st.enabled
-                          ? 'bg-emerald-500/15 text-emerald-200 border-emerald-400/40'
-                          : 'bg-[#121826] text-slate-300 border-white/10 hover:text-white'
-                    }`}
-                  >
-                    <span className="truncate">{limb.label}</span>
-                    <span className="font-mono text-[9px]">{st.enabled ? 'ON' : 'OFF'}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="flex items-center justify-between gap-2 pt-1">
-              <span className="text-[11px] text-slate-400">
-                Alvo Ativo ({IK_LIMBS.find((l) => l.id === selectedIkLimb)?.label})
-              </span>
-              <button
-                type="button"
-                onClick={() =>
-                  onUpdateAnimation({
-                    ikTargets: {
-                      ...animation.ikTargets,
-                      [selectedIkLimb]: {
-                        ...currentIk,
-                        enabled: !currentIk.enabled,
-                      },
-                    },
-                  })
-                }
-                className={`h-6 px-2 text-[10px] font-mono rounded border cursor-pointer ${
-                  currentIk.enabled
-                    ? 'bg-emerald-500/20 text-emerald-200 border-emerald-400/45'
-                    : 'bg-[#121826] text-slate-400 border-white/10'
-                }`}
-              >
-                {currentIk.enabled ? 'Ativado' : 'Desativado'}
-              </button>
-            </div>
-
-            {(['X (Lado)', 'Y (Altura)', 'Z (Frente)'] as const).map((axisLabel, idx) => (
-              <label key={axisLabel} className="flex flex-col gap-1 text-[11px]">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400">{axisLabel}</span>
-                  <span className="font-mono tabular-nums text-sky-300">
-                    {currentIk.offset[idx].toFixed(2)}m
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={-0.8}
-                  max={0.8}
-                  step={0.02}
-                  value={currentIk.offset[idx]}
-                  onChange={(e) => updateIkOffset(idx as 0 | 1 | 2, Number(e.target.value))}
-                  className="studio-slider w-full"
-                />
-              </label>
-            ))}
-          </div>
-
-          {/* Pose Mode FK Individual por Osso */}
-          <div className="rounded-xl bg-[#090c13] border border-white/10 p-3 flex flex-col gap-2.5">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-semibold text-white">
-                Pose Mode FK (Por Osso)
-              </span>
-              <button
-                type="button"
-                onClick={() => onUpdateAnimation({ poseOverrides: {} })}
-                className="text-[10px] text-slate-400 hover:text-white cursor-pointer"
-              >
-                Resetar Todos
-              </button>
-            </div>
-
-            <select
-              aria-label="Selecionar osso FK"
-              value={selectedFkBone}
-              onChange={(e) => setSelectedFkBone(e.target.value)}
-              className="w-full h-8 px-2 text-[11px] rounded-lg bg-[#121826] text-slate-100 border border-white/12 outline-none"
-            >
-              {FK_BONES.map((b) => (
-                <option key={b.role} value={b.role}>
-                  {b.label}
-                </option>
-              ))}
-            </select>
-
-            {(['Rotação X', 'Rotação Y', 'Rotação Z'] as const).map((axisLabel, idx) => (
-              <label key={axisLabel} className="flex flex-col gap-1 text-[11px]">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400">{axisLabel}</span>
-                  <span className="font-mono tabular-nums text-sky-300">
-                    {currentFkDeg[idx]}°
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={-135}
-                  max={135}
-                  step={1}
-                  value={currentFkDeg[idx]}
-                  onChange={(e) => updateFkAxis(idx as 0 | 1 | 2, Number(e.target.value))}
-                  className="studio-slider w-full"
-                />
-              </label>
-            ))}
-
-            <button
-              type="button"
-              onClick={() => {
-                const next = { ...animation.poseOverrides };
-                delete next[selectedFkBone];
-                onUpdateAnimation({ poseOverrides: next });
-              }}
-              className="h-7 px-2 text-[11px] font-medium rounded-lg bg-[#121826] hover:bg-[#192235] text-slate-300 border border-white/10 cursor-pointer"
-            >
-              Zerar Osso Selecionado
-            </button>
           </div>
         </div>
       )}
@@ -1862,7 +1145,7 @@ export function AnimationSidebar({
                   <button
                     type="button"
                     onClick={() => onCaptureFrame(false)}
-                    className="h-8 px-2 text-[11px] font-medium rounded-lg bg-[#121826] hover:bg-[#192235] text-slate-200 border border-white/10 flex items-center justify-center gap-1 cursor-pointer"
+                    className="h-8 px-2 text-[11px] font-medium rounded-lg bg-[#121826] hover:bg-[#192235] text-sky-200 border border-white/10 flex items-center justify-center gap-1 cursor-pointer"
                   >
                     <Camera className="w-3.5 h-3.5 text-slate-400" />
                     <span>PNG Fundo</span>

@@ -373,16 +373,6 @@ export function resetSkeletonToRestPose(rigMap: SkeletonRigMap): void {
   }
 }
 
-function applyEasing(t: number, curve: AnimationSettings['easing']): number {
-  const x = THREE.MathUtils.clamp(t, 0, 1);
-  if (curve === 'linear') return x;
-  if (curve === 'slow_in_out') return x * x * (3 - 2 * x);
-  if (curve === 'snap_out') return 1 - Math.pow(1 - x, 3);
-  return x === 0 || x === 1
-    ? x
-    : Math.pow(2, -8 * x) * Math.sin((x * 10 - 0.75) * ((2 * Math.PI) / 3)) + 1;
-}
-
 function rotateBoneInWorldAxes(
   entry: BoneRestEntry | undefined,
   rx: number,
@@ -563,19 +553,12 @@ function evaluateActionParams(
   action: AnimationActionCycle,
   angle: number,
   drop: number,
-  amp: number,
-  appealChestLean: number,
-  appealBounce: number,
-  followLag: number,
-  arcScale: number,
-  solid: number,
-  squash: number,
-  antic: number
+  amp: number
 ): ActionPoseParams {
   const out: ActionPoseParams = {
     rootLiftY: 0,
     rootOffsetX: 0,
-    torsoRotX: appealChestLean,
+    torsoRotX: 0,
     torsoRotY: 0,
     chestRotX: 0,
     chestRotY: 0,
@@ -597,24 +580,24 @@ function evaluateActionParams(
   if (action === 'walk') {
     const s = Math.sin(angle);
     const c = Math.cos(angle);
-    out.rootLiftY = Math.abs(c) * 0.03 * amp * appealBounce;
+    out.rootLiftY = Math.abs(c) * 0.03 * amp;
     out.lHipX = -s * 0.44 * amp;
     out.rHipX = s * 0.44 * amp;
     out.lKneeX = Math.max(0, c * 0.52 * amp);
     out.rKneeX = Math.max(0, -c * 0.52 * amp);
     out.lFootX = -out.lHipX * 0.22 - out.lKneeX * 0.15;
     out.rFootX = -out.rHipX * 0.22 - out.rKneeX * 0.15;
-    out.lShoX = -Math.sin(angle - followLag) * 0.38 * amp;
-    out.rShoX = Math.sin(angle - followLag) * 0.38 * amp;
-    out.lElbBend = 0.22 + Math.max(0, Math.sin(angle - followLag)) * 0.24;
-    out.rElbBend = 0.22 + Math.max(0, -Math.sin(angle - followLag)) * 0.24;
-    out.torsoRotY = s * (0.06 + solid);
+    out.lShoX = -Math.sin(angle) * 0.38 * amp;
+    out.rShoX = Math.sin(angle) * 0.38 * amp;
+    out.lElbBend = 0.22 + Math.max(0, Math.sin(angle)) * 0.24;
+    out.rElbBend = 0.22 + Math.max(0, -Math.sin(angle)) * 0.24;
+    out.torsoRotY = s * 0.06;
     out.chestRotY = -s * 0.03;
-    out.stretchY = squash > 0 ? 1 + Math.abs(c) * squash * 0.2 : 1;
+    out.stretchY = 1;
   } else if (action === 'run') {
     const s = Math.sin(angle);
     const c = Math.cos(angle);
-    out.rootLiftY = Math.abs(c) * 0.14 * amp * appealBounce;
+    out.rootLiftY = Math.abs(c) * 0.14 * amp;
     out.torsoRotX += 0.24;
     out.lHipX = -s * 0.88 * amp;
     out.rHipX = s * 0.88 * amp;
@@ -622,18 +605,18 @@ function evaluateActionParams(
     out.rKneeX = Math.max(0.1, -c * 1.15 * amp);
     out.lFootX = -out.lHipX * 0.3;
     out.rFootX = -out.rHipX * 0.3;
-    out.lShoX = -Math.sin(angle - followLag) * 0.92 * amp;
-    out.rShoX = Math.sin(angle - followLag) * 0.92 * amp;
+    out.lShoX = -Math.sin(angle) * 0.92 * amp;
+    out.rShoX = Math.sin(angle) * 0.92 * amp;
     out.lElbBend = 1.25;
     out.rElbBend = 1.25;
-    out.torsoRotY = s * (0.24 + solid);
-    out.stretchY = 1 + c * squash * 0.55;
+    out.torsoRotY = s * 0.24;
+    out.stretchY = 1;
   } else if (action === 'jump' || action === 'arc_leap') {
     const jumpArc = Math.max(0, Math.sin(angle));
-    const dip = Math.min(0, Math.sin(angle)) * (0.35 + antic);
-    out.rootLiftY = jumpArc * 0.62 * amp * arcScale + dip * 0.12;
+    const dip = Math.min(0, Math.sin(angle)) * 0.35;
+    out.rootLiftY = jumpArc * 0.62 * amp + dip * 0.12;
     if (action === 'arc_leap') {
-      out.rootOffsetX = Math.sin(angle) * 0.28 * arcScale;
+      out.rootOffsetX = Math.sin(angle) * 0.28;
     }
     out.torsoRotX += dip * 0.45 - jumpArc * 0.16;
     out.lHipX = -jumpArc * 0.55 - dip * 0.45;
@@ -642,16 +625,16 @@ function evaluateActionParams(
     out.rKneeX = jumpArc * 0.95 - dip * 0.75;
     out.lFootX = jumpArc * 0.35;
     out.rFootX = jumpArc * 0.35;
-    out.lShoX = -jumpArc * 1.9 * arcScale + dip * 0.55;
-    out.rShoX = -jumpArc * 1.9 * arcScale + dip * 0.55;
+    out.lShoX = -jumpArc * 1.9 + dip * 0.55;
+    out.rShoX = -jumpArc * 1.9 + dip * 0.55;
     out.lShoZ = -drop * (1 - jumpArc * 0.45);
     out.rShoZ = drop * (1 - jumpArc * 0.45);
     out.lElbBend = 0.45;
     out.rElbBend = 0.45;
-    out.stretchY = 1 + (jumpArc - Math.abs(dip)) * squash;
+    out.stretchY = 1;
   } else if (action === 'punch') {
     const thrust = Math.pow(Math.max(0, Math.sin(angle)), 2);
-    const windUp = Math.min(0, Math.sin(angle)) * (0.6 + antic);
+    const windUp = Math.min(0, Math.sin(angle)) * 0.6;
     out.torsoRotY = -windUp * 0.55 + thrust * 0.68 * amp;
     out.chestRotX = thrust * 0.15;
     out.rShoX = -1.48 * thrust * amp + windUp * 0.55;
@@ -663,7 +646,7 @@ function evaluateActionParams(
     out.rHipX = 0.22;
     out.rKneeX = 0.2;
     out.rootLiftY = -thrust * 0.05;
-    out.stretchY = 1 + thrust * squash * 0.45;
+    out.stretchY = 1;
   } else if (action === 'slash') {
     const swing = Math.sin(angle);
     const strike = Math.max(0, swing);
@@ -695,7 +678,7 @@ function evaluateActionParams(
   } else if (action === 'dance') {
     const s = Math.sin(angle * 2);
     const c = Math.cos(angle * 2);
-    out.rootLiftY = Math.abs(s) * 0.09 * amp * appealBounce;
+    out.rootLiftY = Math.abs(s) * 0.09 * amp;
     out.rootOffsetX = Math.sin(angle) * 0.08 * amp;
     out.torsoRotY = Math.sin(angle) * 0.35 * amp;
     out.chestRotY = -Math.sin(angle) * 0.22;
@@ -708,8 +691,8 @@ function evaluateActionParams(
     out.lElbBend = 0.85 + s * 0.35;
     out.rElbBend = 0.85 - s * 0.35;
   } else if (action === 'wave') {
-    out.rShoZ = drop - (2.15 + Math.sin(angle * 2) * 0.35 * amp * arcScale);
-    out.rElbBend = 0.55 + Math.cos(angle * 2 - followLag) * 0.42 * amp;
+    out.rShoZ = drop - (2.15 + Math.sin(angle * 2) * 0.35 * amp);
+    out.rElbBend = 0.55 + Math.cos(angle * 2) * 0.42 * amp;
     out.torsoRotX += -0.05;
     out.torsoRotY = 0.12;
   } else {
@@ -784,96 +767,11 @@ export function applyProceduralPoseToSkeleton(
       ? (clampedFrame - 1) / 59
       : (clampedFrame - 1) / 60;
 
-  let phaseRaw = rawPhase;
-  if (settings.method === 'pose_to_pose') {
-    if (settings.keyframes.length >= 2) {
-      const sorted = [...settings.keyframes].sort((a, b) => a - b);
-      let prevKf = sorted[0];
-      let nextKf = sorted[sorted.length - 1];
-      for (let i = 0; i < sorted.length - 1; i++) {
-        if (clampedFrame >= sorted[i] && clampedFrame <= sorted[i + 1]) {
-          prevKf = sorted[i];
-          nextKf = sorted[i + 1];
-          break;
-        }
-      }
-      const span = Math.max(1, nextKf - prevKf);
-      const localT = THREE.MathUtils.clamp((clampedFrame - prevKf) / span, 0, 1);
-      const steppedLocal = Math.floor(localT * 3) / 3;
-      phaseRaw = (prevKf - 1 + steppedLocal * span) / 60;
-    } else {
-      phaseRaw = Math.floor(rawPhase * 8) / 8;
-    }
-  }
-
-  const easedPhase = applyEasing(phaseRaw, settings.easing);
-  const patrol = computePatrolBackAndForth(
-    phaseRaw,
-    settings.action,
-    settings.inPlace,
-    settings.exaggeration
-  );
-  const angle = easedPhase * Math.PI * 2 * patrol.stepMultiplier;
-  const rawTime = (clampedFrame / 24) * Math.PI;
-
   const amp = settings.exaggeration;
-  const physicsBoost = settings.physicsEnabled ? 0.35 : 0;
-  const followLag = (settings.followThrough / 100 + physicsBoost) * 0.65;
-  const arcScale = 0.5 + (settings.arcs / 100) * 0.9;
-  const solid = (settings.solidDrawing / 100) * 0.25;
-  const squash = (settings.squashStretch / 100 + (settings.physicsEnabled ? 0.25 : 0)) * 0.16;
-  const antic = (settings.anticipation / 100) * 0.28;
-
-  const appealChestLean =
-    settings.appeal === 'heroic'
-      ? -0.12
-      : settings.appeal === 'villain'
-        ? 0.2
-        : settings.appeal === 'cartoon'
-          ? 0.08
-          : 0;
-  const appealBounce = settings.appeal === 'cartoon' ? 1.35 : 1.0;
-
   const drop = rigMap.tPoseArmDropRad;
-  const basePose = evaluateActionParams(
-    settings.action,
-    angle,
-    drop,
-    amp,
-    appealChestLean,
-    appealBounce,
-    followLag,
-    arcScale,
-    solid,
-    squash,
-    antic
-  );
+  const angle = rawPhase * Math.PI * 2;
 
-  // ActionForge Compose Layering: override Upper Body independently when enabled
-  if (settings.composeEnabled && settings.upperBodyAction !== 'none') {
-    const upperPose = evaluateActionParams(
-      settings.upperBodyAction,
-      angle,
-      drop,
-      amp,
-      appealChestLean,
-      appealBounce,
-      followLag,
-      arcScale,
-      solid,
-      squash,
-      antic
-    );
-    basePose.chestRotX = upperPose.chestRotX;
-    basePose.chestRotY = upperPose.chestRotY;
-    basePose.lShoX = upperPose.lShoX;
-    basePose.rShoX = upperPose.rShoX;
-    basePose.lShoZ = upperPose.lShoZ;
-    basePose.rShoZ = upperPose.rShoZ;
-    basePose.lElbBend = upperPose.lElbBend;
-    basePose.rElbBend = upperPose.rElbBend;
-    basePose.torsoRotY = basePose.torsoRotY * 0.4 + upperPose.torsoRotY * 0.6;
-  }
+  const basePose = evaluateActionParams(settings.action, angle, drop, amp);
 
   let {
     rootLiftY,
@@ -901,34 +799,14 @@ export function applyProceduralPoseToSkeleton(
     rootOffsetX = 0;
   }
 
-  let headRotY = 0;
-  let headRotX = 0;
-  if (settings.secondaryAction === 'breathing') {
-    stretchY *= 1 + Math.sin(rawTime * 1.4) * 0.022;
-    chestRotX += Math.sin(rawTime * 1.4) * 0.035;
-  } else if (settings.secondaryAction === 'look_around') {
-    headRotY = Math.sin(rawTime * 0.9) * 0.45;
-    headRotX = Math.cos(rawTime * 0.7) * 0.14;
-  } else if (settings.secondaryAction === 'sway') {
-    torsoRotY += Math.sin(rawTime * 1.1) * 0.16;
-  }
-
-  if (settings.physicsEnabled) {
-    const spring = Math.sin(angle * 3 - followLag) * 0.08;
-    headRotX += spring;
-    lElbBend += spring * 1.15;
-    rElbBend -= spring * 1.15;
-  }
-
   const slerpAlpha =
     settings.rotationMode === 'quaternion' && settings.playing ? 0.48 : 1.0;
 
   const isFree = Boolean(settings.freeEdit || !settings.enabled);
-  const invXZ = isFree ? 1 : 1 / Math.sqrt(Math.max(0.75, stretchY));
   const cosBaseY = Math.cos(baseTransform.rot.y);
   const sinBaseY = Math.sin(baseTransform.rot.y);
-  const worldTravelX = isFree ? 0 : rootOffsetX * cosBaseY + patrol.offsetZ * sinBaseY;
-  const worldTravelZ = isFree ? 0 : -rootOffsetX * sinBaseY + patrol.offsetZ * cosBaseY;
+  const worldTravelX = isFree ? 0 : rootOffsetX * cosBaseY;
+  const worldTravelZ = isFree ? 0 : -rootOffsetX * sinBaseY;
 
   root.position.set(
     baseTransform.pos.x + worldTravelX,
@@ -937,93 +815,40 @@ export function applyProceduralPoseToSkeleton(
   );
   root.rotation.set(
     baseTransform.rot.x,
-    baseTransform.rot.y + (isFree ? 0 : patrol.turnRotY),
+    baseTransform.rot.y,
     baseTransform.rot.z
   );
-  root.scale.set(
-    baseTransform.scale.x * invXZ,
-    baseTransform.scale.y * (isFree ? 1 : stretchY),
-    baseTransform.scale.z * invXZ
-  );
+  root.scale.set(baseTransform.scale.x, baseTransform.scale.y * stretchY, baseTransform.scale.z);
 
-  const ov = settings.poseOverrides || {};
+  const f = isFree ? 0 : 1;
   const r = rigMap.roles;
   if (r.hips || r.spine || r.leftThigh || r.rightUpperArm) {
-    const f = isFree ? 0 : 1;
-    rotateBoneInWorldAxes(r.hips, torsoRotX * 0.25 * f, torsoRotY * 0.35 * f, 0, slerpAlpha, ov.hips);
-    rotateBoneInWorldAxes(r.spine, torsoRotX * 0.5 * f, torsoRotY * 0.45 * f, 0, slerpAlpha, ov.spine);
-    rotateBoneInWorldAxes(r.chest, (torsoRotX * 0.3 + chestRotX) * f, (torsoRotY * 0.35 + chestRotY) * f, 0, slerpAlpha, ov.chest);
-    rotateBoneInWorldAxes(r.neck, headRotX * 0.4 * f, (headRotY * 0.35 - torsoRotY * 0.2) * f, 0, slerpAlpha, ov.neck);
-    rotateBoneInWorldAxes(r.head, headRotX * 0.6 * f, (headRotY * 0.65 - torsoRotY * 0.25) * f, 0, slerpAlpha, ov.head);
+    rotateBoneInWorldAxes(r.hips, torsoRotX * 0.25 * f, torsoRotY * 0.35 * f, 0, slerpAlpha);
+    rotateBoneInWorldAxes(r.spine, torsoRotX * 0.5 * f, torsoRotY * 0.45 * f, 0, slerpAlpha);
+    rotateBoneInWorldAxes(r.chest, (torsoRotX * 0.3 + chestRotX) * f, (torsoRotY * 0.35 + chestRotY) * f, 0, slerpAlpha);
+    rotateBoneInWorldAxes(r.neck, 0, 0, 0, slerpAlpha);
+    rotateBoneInWorldAxes(r.head, 0, 0, 0, slerpAlpha);
 
-    rotateBoneInWorldAxes(r.leftThigh, lHipX * f, 0, 0, slerpAlpha, ov.leftThigh);
-    rotateBoneInWorldAxes(r.rightThigh, rHipX * f, 0, 0, slerpAlpha, ov.rightThigh);
-    rotateBoneInWorldAxes(r.leftShin, lKneeX * f, 0, 0, slerpAlpha, ov.leftShin);
-    rotateBoneInWorldAxes(r.rightShin, rKneeX * f, 0, 0, slerpAlpha, ov.rightShin);
-    rotateBoneInWorldAxes(r.leftFoot, lFootX * f, 0, 0, slerpAlpha, ov.leftFoot);
-    rotateBoneInWorldAxes(r.rightFoot, rFootX * f, 0, 0, slerpAlpha, ov.rightFoot);
+    rotateBoneInWorldAxes(r.leftThigh, lHipX * f, 0, 0, slerpAlpha);
+    rotateBoneInWorldAxes(r.rightThigh, rHipX * f, 0, 0, slerpAlpha);
+    rotateBoneInWorldAxes(r.leftShin, lKneeX * f, 0, 0, slerpAlpha);
+    rotateBoneInWorldAxes(r.rightShin, rKneeX * f, 0, 0, slerpAlpha);
+    rotateBoneInWorldAxes(r.leftFoot, lFootX * f, 0, 0, slerpAlpha);
+    rotateBoneInWorldAxes(r.rightFoot, rFootX * f, 0, 0, slerpAlpha);
 
-    rotateBoneInWorldAxes(r.leftUpperArm, lShoX * f, 0, isFree ? -drop * 0.25 : lShoZ, slerpAlpha, ov.leftUpperArm);
-    rotateBoneInWorldAxes(r.rightUpperArm, rShoX * f, 0, isFree ? drop * 0.25 : rShoZ, slerpAlpha, ov.rightUpperArm);
-    rotateBoneAroundWorldAxis(r.leftForeArm, rigMap.leftForeArmBendAxis, isFree ? 0 : lElbBend, slerpAlpha, ov.leftForeArm);
-    rotateBoneAroundWorldAxis(r.rightForeArm, rigMap.rightForeArmBendAxis, isFree ? 0 : rElbBend, slerpAlpha, ov.rightForeArm);
-    rotateBoneInWorldAxes(r.leftHand, 0, 0, 0, slerpAlpha, ov.leftHand);
-    rotateBoneInWorldAxes(r.rightHand, 0, 0, 0, slerpAlpha, ov.rightHand);
-
-    // Apply ActionForge Live IK overrides if any limb IK target is enabled
-    const ik = settings.ikTargets;
-    if (ik) {
-      root.updateMatrixWorld(true);
-      const poleArm = new THREE.Vector3(0, -0.2, -1);
-      const poleLeg = new THREE.Vector3(0, 0.1, 1);
-
-      if (ik.leftHand?.enabled && r.leftUpperArm && r.leftForeArm && r.leftHand) {
-        const restHand = new THREE.Vector3();
-        r.leftHand.bone.getWorldPosition(restHand);
-        restHand.x += ik.leftHand.offset[0];
-        restHand.y += ik.leftHand.offset[1];
-        restHand.z += ik.leftHand.offset[2];
-        solveTwoBoneIK(r.leftUpperArm, r.leftForeArm, r.leftHand, restHand, poleArm);
-      }
-      if (ik.rightHand?.enabled && r.rightUpperArm && r.rightForeArm && r.rightHand) {
-        const restHand = new THREE.Vector3();
-        r.rightHand.bone.getWorldPosition(restHand);
-        restHand.x += ik.rightHand.offset[0];
-        restHand.y += ik.rightHand.offset[1];
-        restHand.z += ik.rightHand.offset[2];
-        solveTwoBoneIK(r.rightUpperArm, r.rightForeArm, r.rightHand, restHand, poleArm);
-      }
-      if (ik.leftFoot?.enabled && r.leftThigh && r.leftShin && r.leftFoot) {
-        const restFoot = new THREE.Vector3();
-        r.leftFoot.bone.getWorldPosition(restFoot);
-        restFoot.x += ik.leftFoot.offset[0];
-        restFoot.y += ik.leftFoot.offset[1];
-        restFoot.z += ik.leftFoot.offset[2];
-        solveTwoBoneIK(r.leftThigh, r.leftShin, r.leftFoot, restFoot, poleLeg);
-      }
-      if (ik.rightFoot?.enabled && r.rightThigh && r.rightShin && r.rightFoot) {
-        const restFoot = new THREE.Vector3();
-        r.rightFoot.bone.getWorldPosition(restFoot);
-        restFoot.x += ik.rightFoot.offset[0];
-        restFoot.y += ik.rightFoot.offset[1];
-        restFoot.z += ik.rightFoot.offset[2];
-        solveTwoBoneIK(r.rightThigh, r.rightShin, r.rightFoot, restFoot, poleLeg);
-      }
-    }
+    rotateBoneInWorldAxes(r.leftUpperArm, lShoX * f, 0, lShoZ, slerpAlpha);
+    rotateBoneInWorldAxes(r.rightUpperArm, rShoX * f, 0, rShoZ, slerpAlpha);
+    rotateBoneAroundWorldAxis(r.leftForeArm, rigMap.leftForeArmBendAxis, lElbBend, slerpAlpha);
+    rotateBoneAroundWorldAxis(r.rightForeArm, rigMap.rightForeArmBendAxis, rElbBend, slerpAlpha);
+    rotateBoneInWorldAxes(r.leftHand, 0, 0, 0, slerpAlpha);
+    rotateBoneInWorldAxes(r.rightHand, 0, 0, 0, slerpAlpha);
   } else if (rigMap.spineChain.length > 0) {
     const len = rigMap.spineChain.length;
     for (let i = 0; i < len; i++) {
       const weight = (i + 1) / len;
-      const swayX =
-        torsoRotX * 0.6 +
-        (settings.action === 'punch' || settings.action === 'slash'
-          ? Math.sin(angle) * 0.35
-          : Math.sin(angle + i * 0.45) * 0.16 * amp);
-      const swayY = torsoRotY * 0.7 + headRotY * 0.35;
-      const swayZ =
-        (settings.action === 'wave' || settings.action === 'dance'
-          ? Math.sin(angle * 2 + i * 0.5) * 0.28
-          : 0) * weight;
+      const swayX = torsoRotX * 0.6 + Math.sin(angle + i * 0.45) * 0.16 * amp;
+      const swayY = torsoRotY * 0.7;
+      const swayZ = 0;
       rotateBoneInWorldAxes(rigMap.spineChain[i], swayX * weight, swayY * weight, swayZ, slerpAlpha);
     }
   }

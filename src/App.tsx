@@ -73,43 +73,22 @@ const DEFAULT_ANIMATION: AnimationSettings = {
   playing: false,
   cycleMode: 'full_cycle',
   action: 'walk',
-  composeEnabled: false,
-  upperBodyAction: 'none',
   inPlace: true,
   propType: 'none',
   exportProfile: 'standard',
-  appeal: 'neutral',
-  squashStretch: 0,
-  anticipation: 0,
-  staging: 'default',
-  method: 'straight_ahead',
-  followThrough: 10,
-  exaggeration: 1.0,
-  easing: 'slow_in_out',
-  arcs: 20,
   motionTrail: true,
-  secondaryAction: 'none',
-  timing: 1.0,
-  solidDrawing: 10,
   fpsCadence: 30,
   currentFrame: 1,
   frameStart: 1,
   frameEnd: 60,
   autoKey: false,
-  nlaStrips: [],
   rotationMode: 'quaternion',
-  physicsEnabled: false,
   keyframes: [1],
   activeClipIndex: 0,
   poseSource: 'procedural',
   showBones: false,
-  poseOverrides: {},
-  ikTargets: {
-    leftHand: { enabled: false, offset: [0, 0, 0] },
-    rightHand: { enabled: false, offset: [0, 0, 0] },
-    leftFoot: { enabled: false, offset: [0, 0, 0] },
-    rightFoot: { enabled: false, offset: [0, 0, 0] },
-  },
+  exaggeration: 1.0,
+  nlaStrips: [],
 };
 
 const DEFAULT_GEOMETRY_NODES: GeometryNodesSettings = {
@@ -224,35 +203,9 @@ function deepMergeSettings(
     animation: {
       ...base.animation,
       ...(override.animation ?? {}),
-      ikTargets: {
-        ...base.animation.ikTargets,
-        ...(override.animation?.ikTargets ?? {}),
-        leftHand: {
-          ...base.animation.ikTargets.leftHand,
-          ...(override.animation?.ikTargets?.leftHand ?? {}),
-        },
-        rightHand: {
-          ...base.animation.ikTargets.rightHand,
-          ...(override.animation?.ikTargets?.rightHand ?? {}),
-        },
-        leftFoot: {
-          ...base.animation.ikTargets.leftFoot,
-          ...(override.animation?.ikTargets?.leftFoot ?? {}),
-        },
-        rightFoot: {
-          ...base.animation.ikTargets.rightFoot,
-          ...(override.animation?.ikTargets?.rightFoot ?? {}),
-        },
-      },
       keyframes: override.animation?.keyframes
         ? [...override.animation.keyframes]
         : [...base.animation.keyframes],
-      nlaStrips: override.animation?.nlaStrips
-        ? [...override.animation.nlaStrips]
-        : [...base.animation.nlaStrips],
-      poseOverrides: {
-        ...(override.animation?.poseOverrides ?? {}),
-      },
     },
   };
 }
@@ -1557,44 +1510,6 @@ export default function App() {
     }
   }, [showNotice]);
 
-  const handleSaveCustomPose = useCallback(
-    (name: string) => {
-      const id = `pose_${Date.now()}`;
-      const overridesCopy: Record<string, [number, number, number]> = {};
-      for (const [k, v] of Object.entries(settings.animation.poseOverrides)) {
-        overridesCopy[k] = [v[0], v[1], v[2]];
-      }
-      setSavedPoses((prev) => [...prev, { id, name, overrides: overridesCopy }]);
-      showNotice(`Pose "${name}" salva na biblioteca rápida.`);
-    },
-    [settings.animation.poseOverrides, showNotice]
-  );
-
-  const handleApplyPoseOverrides = useCallback(
-    (overrides: Record<string, [number, number, number]>, label?: string) => {
-      const copied: Record<string, [number, number, number]> = {};
-      for (const [k, v] of Object.entries(overrides)) {
-        copied[k] = [v[0], v[1], v[2]];
-      }
-      setSettings((prev) => ({
-        ...prev,
-        animation: {
-          ...prev.animation,
-          poseSource: 'procedural',
-          cycleMode: 'static',
-          playing: false,
-          poseOverrides: copied,
-        },
-      }));
-      if (label) {
-        showNotice(`Pose aplicada: ${label}.`);
-      }
-    },
-    [showNotice]
-  );
-
-
-
   const handleApplyNodeTemplate = useCallback(
     (template: ProceduralNodeTemplate) => {
       threeEngineRef.current?.applyProceduralNodeTemplate(template, true);
@@ -1955,9 +1870,6 @@ export default function App() {
               rigBoneNames={rigBoneNames}
               weightPaint={weightPaint}
               onUpdateWeightPaint={handleUpdateWeightPaint}
-              savedPoses={savedPoses}
-              onSaveCustomPose={handleSaveCustomPose}
-              onApplyPoseOverrides={handleApplyPoseOverrides}
               onRetargetMotionFile={(file) => void handleRetargetMotionFile(file)}
               autoRigOnImport={autoRigOnImport}
               onToggleAutoRigOnImport={() => setAutoRigOnImport((p) => !p)}

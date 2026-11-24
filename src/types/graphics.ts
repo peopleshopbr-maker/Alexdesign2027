@@ -123,23 +123,11 @@ export type AnimationActionCycle =
   | 'aim'
   | 'dance';
 
-export type AnimationAppeal = 'neutral' | 'heroic' | 'cartoon' | 'villain';
-
-export type StagingMode = 'default' | 'silhouette' | 'rim';
-
-export type AnimationMethod = 'pose_to_pose' | 'straight_ahead';
-
-export type EasingCurveType = 'linear' | 'slow_in_out' | 'snap_out' | 'elastic';
-
-export type SecondaryAction = 'none' | 'breathing' | 'look_around' | 'sway';
-
 export type AutoRigPreset = 'biped' | 'flex_spine';
 
 export type RigExportProfile = 'standard' | 'mixamo' | 'ue5' | 'unity' | 'godot';
 
 export type AnimationPoseSource = 'procedural' | 'clip';
-
-export type IkLimbId = 'leftHand' | 'rightHand' | 'leftFoot' | 'rightFoot';
 
 export type PropSocketType = 'none' | 'sword' | 'shield' | 'staff';
 
@@ -158,24 +146,17 @@ export type HumanoidJointMarkerId =
   | 'ankleL'
   | 'ankleR';
 
-export interface IkTargetSetting {
-  enabled: boolean;
-  offset: [number, number, number];
-}
-
 export type TimelineViewMode = 'strips' | 'graph' | 'keys';
 
 export interface NlaTimelineStrip {
   id: string;
-  trackId: 'base' | 'upper';
+  trackId: 'base';
   label: string;
   sourceType: 'procedural' | 'clip';
   actionCycle?: AnimationActionCycle;
   clipIndex?: number;
   startFrame: number;
   endFrame: number;
-  blendIn: number;
-  muted?: boolean;
 }
 
 export interface AnimationSettings {
@@ -185,38 +166,22 @@ export interface AnimationSettings {
   freeEdit?: boolean;
   cycleMode: 'static' | 'full_cycle';
   action: AnimationActionCycle;
-  composeEnabled: boolean;
-  upperBodyAction: AnimationActionCycle | 'none';
   inPlace: boolean;
   propType: PropSocketType;
   exportProfile: RigExportProfile;
-  appeal: AnimationAppeal;
-  squashStretch: number; // 0..100
-  anticipation: number; // 0..100
-  staging: StagingMode;
-  method: AnimationMethod;
-  followThrough: number; // 0..100
-  exaggeration: number; // 0.5..2.0
-  easing: EasingCurveType;
-  arcs: number; // 0..100
   motionTrail: boolean;
-  secondaryAction: SecondaryAction;
-  timing: number; // 0.25..2.0
-  solidDrawing: number; // 0..100
   fpsCadence: 12 | 24 | 30 | 60;
   currentFrame: number; // 1..240
   frameStart: number; // 1..239
   frameEnd: number; // 2..240
   autoKey: boolean;
-  nlaStrips: NlaTimelineStrip[];
   rotationMode: 'quaternion' | 'euler';
-  physicsEnabled: boolean;
   keyframes: number[];
   activeClipIndex: number;
   poseSource: AnimationPoseSource;
   showBones: boolean;
-  poseOverrides: Record<string, [number, number, number]>;
-  ikTargets: Record<IkLimbId, IkTargetSetting>;
+  exaggeration: number;
+  nlaStrips: NlaTimelineStrip[];
 }
 
 export type GraphicsBackend = 'webgl2' | 'webgpu';
